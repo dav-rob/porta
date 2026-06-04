@@ -39,9 +39,7 @@ console.log(`✓ Tailscale IP: ${tailscaleIp}`);
 
 // ── Inject into env ──
 // PORTA_HOST: binds the proxy to the Tailscale interface
-// PORTA_TAILSCALE: unlocks the exposure guard for CGNAT IPs (100.64–127.x.x)
 process.env.PORTA_HOST = tailscaleIp;
-process.env.PORTA_TAILSCALE = "1";
 
 const tailscaleOrigin = `http://${tailscaleIp}:5173`;
 if (process.env.PORTA_CORS_ORIGINS) {

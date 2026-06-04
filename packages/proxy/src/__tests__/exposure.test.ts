@@ -26,6 +26,20 @@ describe("proxy exposure guard", () => {
     expect(() => assertSupportedListenHost("192.168.1.20")).not.toThrow();
   });
 
+  it("accepts Tailscale IPs", () => {
+    expect(() => assertSupportedListenHost("100.64.0.1")).not.toThrow();
+    expect(() => assertSupportedListenHost("100.127.255.254")).not.toThrow();
+  });
+
+  it("rejects non-CGNAT IPs starting with 100", () => {
+    expect(() => assertSupportedListenHost("100.63.255.255")).toThrow(
+      /Public internet exposure is unsupported/,
+    );
+    expect(() => assertSupportedListenHost("100.128.0.1")).toThrow(
+      /Public internet exposure is unsupported/,
+    );
+  });
+
   it("rejects wildcard bind addresses", () => {
     expect(() => assertSupportedListenHost("0.0.0.0")).toThrow(/Wildcard bind/);
     expect(() => assertSupportedListenHost("::")).toThrow(/Wildcard bind/);
@@ -34,10 +48,10 @@ describe("proxy exposure guard", () => {
   it("rejects public addresses and unknown hostnames", () => {
     expect(isPrivateLanHost("8.8.8.8")).toBe(false);
     expect(() => assertSupportedListenHost("8.8.8.8")).toThrow(
-      /Public internet exposure is unsupported/,
+      /Public internet exposure is unsupported. Set PORTA_HOST to a loopback address, an explicit private LAN IP, or a Tailscale IP/,
     );
     expect(() => assertSupportedListenHost("porta.example.com")).toThrow(
-      /Public internet exposure is unsupported/,
+      /Public internet exposure is unsupported. Set PORTA_HOST to a loopback address, an explicit private LAN IP, or a Tailscale IP/,
     );
   });
 

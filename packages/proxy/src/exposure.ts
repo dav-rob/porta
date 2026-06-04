@@ -76,13 +76,11 @@ export function assertSupportedListenHost(
 ): void {
   const normalized = host.trim().toLowerCase();
 
-  if (isLoopbackHost(normalized) || isPrivateLanHost(normalized)) {
-    return;
-  }
-
-  // Allow Tailscale IPs only if explicitly enabled via PORTA_TAILSCALE=1
-  // This avoids permanently relaxing the exposure guard for CGNAT IPs.
-  if (env.PORTA_TAILSCALE === "1" && isTailscaleIp(normalized)) {
+  if (
+    isLoopbackHost(normalized) ||
+    isPrivateLanHost(normalized) ||
+    isTailscaleIp(normalized)
+  ) {
     return;
   }
 
@@ -97,6 +95,6 @@ export function assertSupportedListenHost(
   }
 
   throw new Error(
-    "Public internet exposure is unsupported. Set PORTA_HOST to a loopback address or an explicit private LAN IP.",
+    "Public internet exposure is unsupported. Set PORTA_HOST to a loopback address, an explicit private LAN IP, or a Tailscale IP.",
   );
 }
