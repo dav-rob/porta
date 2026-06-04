@@ -12,24 +12,6 @@ This clones directly onto the `develop` branch which is the one you want.
 
 ---
 
-## To Change This Code
-
-Make your changes, then:
-
-```bash
-git add .
-git commit -m "your message"
-git push dav-rob develop
-```
-
-To get updates from the original author:
-
-```bash
-git pull origin develop
-```
-
----
-
 ## Running with Tailscale
 
 Make sure your `.env` file has your Tailscale IP set:
@@ -52,4 +34,22 @@ To find your Tailscale IP at any time:
 
 ```bash
 tailscale ip -4
+```
+
+---
+
+## To Change This Code
+
+Make your changes, then:
+
+```bash
+git add .
+git commit -m "your message"
+git push dav-rob develop
+```
+
+To get updates from the original author:
+
+```bash
+git pull origin develop
 ```
