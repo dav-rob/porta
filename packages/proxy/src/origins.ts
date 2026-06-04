@@ -3,6 +3,8 @@ export type AllowedOrigin = string | RegExp;
 const DEFAULT_ALLOWED_ORIGINS: AllowedOrigin[] = [
   /^https?:\/\/localhost(:\d+)?$/,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  // Tailscale CGNAT range: 100.64.0.0/10 (second octet 64–127)
+  /^https?:\/\/100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}(:\d+)?$/,
 ];
 
 export function getAllowedOrigins(

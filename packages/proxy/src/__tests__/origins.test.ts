@@ -10,6 +10,16 @@ describe("origin policy", () => {
     expect(isAllowedOrigin("https://evil.example", allowedOrigins)).toBe(false);
   });
 
+  it("allows Tailscale CGNAT origins by default", () => {
+    const allowedOrigins = getAllowedOrigins({});
+
+    expect(isAllowedOrigin("http://100.64.0.1:5173", allowedOrigins)).toBe(true);
+    expect(isAllowedOrigin("http://100.123.104.63:5173", allowedOrigins)).toBe(true);
+    expect(isAllowedOrigin("http://100.127.255.254:5173", allowedOrigins)).toBe(true);
+    expect(isAllowedOrigin("http://100.63.0.1:5173", allowedOrigins)).toBe(false);
+    expect(isAllowedOrigin("http://100.128.0.1:5173", allowedOrigins)).toBe(false);
+  });
+
   it("adds trimmed custom origins from env", () => {
     const allowedOrigins = getAllowedOrigins({
       PORTA_CORS_ORIGINS: " https://porta.example , https://intranet.example ",
