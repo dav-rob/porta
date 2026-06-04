@@ -11,6 +11,18 @@ export function getAllowedOrigins(
   env: NodeJS.ProcessEnv = process.env,
 ): AllowedOrigin[] {
   const allowedOrigins = [...DEFAULT_ALLOWED_ORIGINS];
+
+  // Auto-allow the configured PORTA_HOST (covers Tailscale MagicDNS hostnames
+  // like "davids-mac-mini" or any custom hostname the user sets).
+  const host = env.PORTA_HOST;
+  if (host && host !== "127.0.0.1" && host !== "localhost") {
+    allowedOrigins.push(new RegExp(`^https?:\\/\\/${host.replace(/\./g, "\\\\.")}(:\\d+)?$`));
+  }
+
+  // Allow .local mDNS hostnames (common on LAN) and bare hostnames without
+  // dots (Tailscale MagicDNS names like "davids-mac-mini").
+  allowedOrigins.push(/^https?:\/\/[a-zA-Z0-9-]+(\.local)?(:\d+)?$/);
+
   const configuredOrigins = env.PORTA_CORS_ORIGINS?.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
