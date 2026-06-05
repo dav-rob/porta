@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LSInstance } from "../discovery.js";
 import { RPCError } from "../rpc.js";
+import { pathToFileURL } from "node:url";
 
 const mockGetInstances = vi.fn<() => Promise<LSInstance[]>>();
 const mockGetInstance = vi.fn<() => Promise<LSInstance | undefined>>();
@@ -90,8 +91,8 @@ describe("GET /api/workspaces", () => {
         return {
           workspaceInfos: [
             {
-              workspaceUri: "file:///home/user/porta",
-              gitRootUri: "file:///home/user/porta",
+              workspaceUri: pathToFileURL("/home/user/porta").href,
+              gitRootUri: pathToFileURL("/home/user/porta").href,
             },
           ],
         };
@@ -102,8 +103,8 @@ describe("GET /api/workspaces", () => {
             "c1": {
               workspaces: [
                 {
-                  workspaceFolderAbsoluteUri: "file:///home/user/porta",
-                  gitRootAbsoluteUri: "file:///home/user/porta",
+                  workspaceFolderAbsoluteUri: pathToFileURL("/home/user/porta").href,
+                  gitRootAbsoluteUri: pathToFileURL("/home/user/porta").href,
                 },
               ],
             },
@@ -117,7 +118,7 @@ describe("GET /api/workspaces", () => {
     const body = await res.json();
 
     expect(body.workspaceInfos).toHaveLength(1);
-    expect(body.workspaceInfos[0].workspaceUri).toBe("file:///home/user/porta");
+    expect(body.workspaceInfos[0].workspaceUri).toBe(pathToFileURL("/home/user/porta").href);
   });
 
   it("filters local workspaces whose folders no longer exist", async () => {
@@ -135,10 +136,10 @@ describe("GET /api/workspaces", () => {
         return {
           workspaceInfos: [
             {
-              workspaceUri: "file:///home/user/projects/deleted-project",
+              workspaceUri: pathToFileURL("/home/user/projects/deleted-project").href,
             },
             {
-              workspaceUri: "file:///home/user/projects/active-project",
+              workspaceUri: pathToFileURL("/home/user/projects/active-project").href,
             },
           ],
         };
@@ -155,7 +156,7 @@ describe("GET /api/workspaces", () => {
     expect(res.status).toBe(200);
     expect(body.workspaceInfos).toEqual([
       {
-        workspaceUri: "file:///home/user/projects/active-project",
+        workspaceUri: pathToFileURL("/home/user/projects/active-project").href,
       },
     ]);
   });
@@ -194,13 +195,13 @@ describe("POST /api/workspaces", () => {
 
     expect(res.status).toBe(201);
     expect(body).toEqual({
-      workspaceUri: "file:///home/user/projects/new-app",
+      workspaceUri: pathToFileURL("/home/user/projects/new-app").href,
       name: "new-app",
     });
     expect(mockRpcCall).toHaveBeenNthCalledWith(
       1,
       "ValidateProject",
-      { location: "file:///home/user/projects/new-app" },
+      { location: pathToFileURL("/home/user/projects/new-app").href },
       ls,
     );
     expect(mockRpcCall).toHaveBeenNthCalledWith(
@@ -213,7 +214,7 @@ describe("POST /api/workspaces", () => {
             resources: [
               {
                 gitFolder: {
-                  folderUri: "file:///home/user/projects/new-app",
+                  folderUri: pathToFileURL("/home/user/projects/new-app").href,
                   allowWrite: true,
                 },
               },
@@ -253,7 +254,7 @@ describe("POST /api/workspaces", () => {
 
     expect(res.status).toBe(201);
     expect(body.workspaceUri).toBe(
-      "file:///home/user/projects/test-porta-1",
+      pathToFileURL("/home/user/projects/test-porta-1").href,
     );
     expect(mockRpcCall).toHaveBeenLastCalledWith(
       "AddTrackedWorkspace",
