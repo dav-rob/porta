@@ -44,3 +44,31 @@ Brief notes for future agents working on Porta.
   `$HOME/runporta.sh` launcher.
 - `scripts_davidroberts/launch_bg_app.zsh` is the `.zshrc` helper for
   `runantigravity`, `runcodex`, and `runporta` aliases.
+
+---
+
+## ⚠️ TEMPORARY: Rollback State (remove once resolved)
+
+The branch was rolled back on 2026-06-05 to a known-safe commit before the
+auto-initialise workspace-on-send work was attempted. The work from those 6
+commits is preserved and can be recovered.
+
+- **HEAD**: `d08976b` — Safety marker before auto-initialise workspace-on-send
+- **Stash**: `wip: workspace-on-send feature (6 commits from backup/pre-rollback)`
+  — recoverable any time with `git stash pop` or `git stash apply`
+- **Tag**: `backup/pre-rollback` — permanent pointer to the old HEAD (`810499e`)
+
+The stash contains changes across these areas:
+- `feat: add workspace project support`
+- `fix: auto-register local workspace on send`
+- `fix: hide empty recovered workspaces`
+- `fix: hide tracked workspaces until used`
+- `chore: move utility scripts to scripts util`
+- `docs: add agent permissions section`
+
+To inspect without applying: `git stash show -p stash@{0}`
+To apply selectively: `git checkout stash@{0} -- <path>`
+To view the old commits: `git log backup/pre-rollback`
+
+**Remove this section once the workspace-on-send work has been replanned and
+re-implemented (or permanently abandoned).**
