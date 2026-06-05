@@ -1,0 +1,97 @@
+type ApproveCommandRequest = {
+  cascadeId: string;
+  interaction: {
+    trajectoryId: string;
+    stepIndex: number;
+    permission: {
+      allow: true;
+    };
+  };
+};
+
+type ApproveCommand = (request: ApproveCommandRequest) => Promise<unknown>;
+
+const approvedCommandKeys = new Set<string>();
+
+export function clearAutoApprovedCommandsForTests(): void {
+  approvedCommandKeys.clear();
+}
+
+function isAutoApproveCommandsEnabled(): boolean {
+  return process.env.PORTA_AUTO_APPROVE_COMMANDS === "1";
+}
+
+function commandText(runCommand: Record<string, unknown>): string {
+  for (const key of ["proposedCommandLine", "commandLine", "command"]) {
+    const value = runCommand[key];
+    if (typeof value === "string" && value.length > 0) return value;
+  }
+  return "(unknown command)";
+}
+
+function approvalCandidate(
+  cascadeId: string,
+  step: unknown,
+): { key: string; request: ApproveCommandRequest; command: string } | undefined {
+  if (!step || typeof step !== "object") return undefined;
+  const record = step as Record<string, unknown>;
+  if (record.status !== "CORTEX_STEP_STATUS_WAITING") return undefined;
+  if (!record.runCommand || typeof record.runCommand !== "object") {
+    return undefined;
+  }
+
+  const metadata = record.metadata;
+  if (!metadata || typeof metadata !== "object") return undefined;
+  const sourceInfo = (metadata as Record<string, unknown>)
+    .sourceTrajectoryStepInfo;
+  if (!sourceInfo || typeof sourceInfo !== "object") return undefined;
+
+  const trajectoryId = (sourceInfo as Record<string, unknown>).trajectoryId;
+  const stepIndex = (sourceInfo as Record<string, unknown>).stepIndex;
+  if (typeof trajectoryId !== "string" || trajectoryId.length === 0) {
+    return undefined;
+  }
+  if (typeof stepIndex !== "number") return undefined;
+
+  const key = `${cascadeId}:${trajectoryId}:${stepIndex}`;
+  return {
+    key,
+    command: commandText(record.runCommand as Record<string, unknown>),
+    request: {
+      cascadeId,
+      interaction: {
+        trajectoryId,
+        stepIndex,
+        permission: {
+          allow: true,
+        },
+      },
+    },
+  };
+}
+
+export async function maybeAutoApproveCommands(
+  cascadeId: string,
+  steps: unknown[],
+  approve: ApproveCommand,
+): Promise<void> {
+  if (!isAutoApproveCommandsEnabled()) return;
+
+  for (const step of steps) {
+    const candidate = approvalCandidate(cascadeId, step);
+    if (!candidate) continue;
+    if (approvedCommandKeys.has(candidate.key)) continue;
+
+    try {
+      await approve(candidate.request);
+      approvedCommandKeys.add(candidate.key);
+      console.log(
+        `[auto-approve] approved command ${candidate.key}: ${candidate.command}`,
+      );
+    } catch (err) {
+      console.error(
+        `[auto-approve] failed command ${candidate.key}: ${String(err)}`,
+      );
+    }
+  }
+}

@@ -32,6 +32,7 @@ import {
 } from "../step-recovery.js";
 import { messageTracker } from "../message-tracker.js";
 import { conversationSignals } from "../signals.js";
+import { maybeAutoApproveCommands } from "../auto-approve.js";
 
 // ── Background warm-up for disk-only conversations ──
 
@@ -396,6 +397,10 @@ export function registerConversationRoutes(app: Hono): void {
       if (stepsArray.length > targetCount) {
         stepsArray = stepsArray.slice(0, targetCount);
       }
+
+      await maybeAutoApproveCommands(id, stepsArray, (request) =>
+        rpcForConversation("HandleCascadeUserInteraction", id, request),
+      );
 
       return c.json({
         steps: messageTracker.annotateSteps(id, resolvedOffset, stepsArray),
