@@ -10,6 +10,8 @@ const mockRpcCall = vi.fn<
   (method: string, body: unknown, inst?: LSInstance) => Promise<unknown>
 >();
 const mockAccess = vi.fn<(path: string) => Promise<void>>();
+const mockReaddir = vi.fn<(path: string) => Promise<string[]>>();
+const mockReadFile = vi.fn<(path: string, encoding: BufferEncoding) => Promise<string>>();
 
 vi.mock("../routing.js", () => ({
   discovery: { getInstance: mockGetInstance, getInstances: mockGetInstances },
@@ -17,6 +19,8 @@ vi.mock("../routing.js", () => ({
 }));
 vi.mock("node:fs/promises", () => ({
   access: mockAccess,
+  readdir: mockReaddir,
+  readFile: mockReadFile,
 }));
 
 const { registerWorkspaceRoutes } = await import("../routes/workspaces.js");
@@ -41,6 +45,8 @@ describe("GET /api/workspaces", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAccess.mockResolvedValue(undefined);
+    mockReaddir.mockResolvedValue([]);
+    mockReadFile.mockRejectedValue(new Error("not found"));
   });
 
   it("falls back to conversation metadata when GetWorkspaceInfos has no workspaceInfos", async () => {
@@ -160,6 +166,45 @@ describe("GET /api/workspaces", () => {
       },
     ]);
   });
+
+  it("adds Antigravity project ids from local project config files", async () => {
+    const ls = makeInstance({ pid: 6 });
+    const workspaceUri = pathToFileURL("/home/user/projects/new-app").href;
+    mockGetInstances.mockResolvedValue([ls]);
+    mockReaddir.mockResolvedValue(["project-123.json"]);
+    mockReadFile.mockResolvedValue(
+      JSON.stringify({
+        id: "project-123",
+        name: "new-app",
+        projectResources: {
+          resources: [{ gitFolder: { folderUri: workspaceUri } }],
+        },
+      }),
+    );
+    mockRpcCall.mockImplementation(async (method: string) => {
+      if (method === "GetWorkspaceInfos") {
+        return {
+          workspaceInfos: [{ workspaceUri }],
+        };
+      }
+      if (method === "GetAllCascadeTrajectories") {
+        return {};
+      }
+      return {};
+    });
+
+    const res = await app().request("/api/workspaces");
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.workspaceInfos).toEqual([
+      {
+        workspaceUri,
+        projectId: "project-123",
+        projectName: "new-app",
+      },
+    ]);
+  });
 });
 
 describe("POST /api/workspaces", () => {
@@ -197,6 +242,7 @@ describe("POST /api/workspaces", () => {
     expect(body).toEqual({
       workspaceUri: pathToFileURL("/home/user/projects/new-app").href,
       name: "new-app",
+      projectId: expect.any(String),
     });
     expect(mockRpcCall).toHaveBeenNthCalledWith(
       1,
@@ -209,13 +255,13 @@ describe("POST /api/workspaces", () => {
       "CreateProject",
       {
         project: {
+          id: expect.any(String),
           name: "new-app",
           projectResources: {
             resources: [
               {
                 gitFolder: {
                   folderUri: pathToFileURL("/home/user/projects/new-app").href,
-                  allowWrite: true,
                 },
               },
             ],

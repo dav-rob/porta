@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { IconFolder, IconPlus } from "./Icons";
+import type { WorkspaceOption } from "../hooks/useWorkspaces";
 
 interface Props {
-  workspaces: { uri: string; name: string }[];
+  workspaces: WorkspaceOption[];
   selected: string;
   onSelect: (uri: string) => void;
   onAddFolder?: () => void;

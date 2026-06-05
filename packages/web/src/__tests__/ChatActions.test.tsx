@@ -18,6 +18,7 @@ describe("useChatActions", () => {
   const defaultArgs = {
     activeId: "test-id",
     currentWorkspaceUri: "file:///test/ws",
+    currentProjectId: undefined,
     projectSlug: "test-ws",
     refresh: vi.fn(),
     conversations: [{ id: "test-id", summary: { stepCount: 5 } }],
@@ -119,5 +120,32 @@ describe("useChatActions", () => {
 
     expect(result.current.optimisticMessages).toHaveLength(1);
     expect(result.current.optimisticMessages[0].optimisticId).toBe("opt-2");
+  });
+
+  it("passes the current project id when starting a new workspace chat", async () => {
+    vi.mocked(client.api.startConversation).mockResolvedValueOnce({
+      cascadeId: "new-cascade",
+    });
+    vi.mocked(client.api.sendMessage).mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(
+      () =>
+        useChatActions({
+          ...defaultArgs,
+          activeId: null,
+          currentProjectId: "project-123",
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleSend("hello", null, undefined, undefined, true);
+    });
+
+    expect(client.api.startConversation).toHaveBeenCalledWith(
+      "file:///test/ws",
+      true,
+      "project-123",
+    );
   });
 });

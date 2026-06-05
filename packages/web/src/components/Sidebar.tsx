@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import type { ConversationEntry } from "../hooks/useConversations";
+import type { WorkspaceOption } from "../hooks/useWorkspaces";
 import { api } from "../api/client";
 import {
   IconPlus,
@@ -13,7 +14,7 @@ import {
 
 interface Props {
   conversations: ConversationEntry[];
-  workspaces?: { uri: string; name: string }[];
+  workspaces?: WorkspaceOption[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onWorkspaceSelect?: (uri: string) => void;

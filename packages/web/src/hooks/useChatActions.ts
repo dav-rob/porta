@@ -10,6 +10,7 @@ import { DEFAULT_MODEL } from "../constants";
 interface UseChatActionsArgs {
   activeId: string | null;
   currentWorkspaceUri: string | undefined;
+  currentProjectId: string | undefined;
   projectSlug: string | undefined;
   refresh: () => void;
   conversations: {
@@ -52,6 +53,7 @@ interface UseChatActionsResult {
 export function useChatActions({
   activeId,
   currentWorkspaceUri,
+  currentProjectId,
   projectSlug,
   refresh,
   conversations,
@@ -132,6 +134,7 @@ export function useChatActions({
           const result = await api.startConversation(
             currentWorkspaceUri || undefined,
             granted,
+            currentProjectId,
           );
           cascadeId = result.cascadeId;
           navigate(`/${projectSlug}/${cascadeId}`, { replace: true });
@@ -168,7 +171,14 @@ export function useChatActions({
         setOptimisticMessages((prev) => [...prev, errorMsg]);
       }
     },
-    [activeId, refresh, currentWorkspaceUri, projectSlug, navigate],
+    [
+      activeId,
+      refresh,
+      currentWorkspaceUri,
+      currentProjectId,
+      projectSlug,
+      navigate,
+    ],
   );
 
   const handleStop = useCallback(async () => {

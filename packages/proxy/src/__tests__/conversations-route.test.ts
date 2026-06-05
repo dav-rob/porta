@@ -416,4 +416,36 @@ describe("POST /api/conversations", () => {
     );
     expect(conversationInstanceAffinity.get("new-cascade")).toBe(scopedLS);
   });
+
+  it("passes projectId through when starting a conversation", async () => {
+    const scopedLS = makeInstance({
+      pid: 8,
+      workspaceId: "file_home_user_project",
+    });
+    mockGetInstances.mockResolvedValue([scopedLS]);
+    mockRpcCall.mockImplementation(async (method) => {
+      if (method === "StartCascade") return { cascadeId: "project-cascade" };
+      return {};
+    });
+
+    const res = await app().request("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceFolderAbsoluteUri: "file:///home/user/project",
+        projectId: "project-123",
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRpcCall).toHaveBeenCalledWith(
+      "StartCascade",
+      expect.objectContaining({
+        workspaceFolderAbsoluteUri: "file:///home/user/project",
+        workspaceUris: ["file:///home/user/project"],
+        projectId: "project-123",
+      }),
+      scopedLS,
+    );
+  });
 });

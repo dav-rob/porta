@@ -85,10 +85,12 @@ function ChatView() {
   const { data: health } = usePolling<HealthResponse>(api.health, 30_000);
 
   // ── Hooks ──
-  const { workspaces, currentWorkspaceUri, addLocalWorkspace } = useWorkspaces(
-    conversations,
-    projectSlug,
-  );
+  const {
+    workspaces,
+    currentWorkspaceUri,
+    currentProjectId,
+    addLocalWorkspace,
+  } = useWorkspaces(conversations, projectSlug);
   const { draftText, handleDraftChange } = useDraftText(activeId);
   const { settings, updateSettings } = useClientSettings();
   const workspacePermissionKey = currentWorkspaceUri ?? null;
@@ -128,6 +130,7 @@ function ChatView() {
   } = useChatActions({
     activeId,
     currentWorkspaceUri,
+    currentProjectId,
     projectSlug,
     refresh,
     conversations,

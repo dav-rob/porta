@@ -69,20 +69,33 @@ export const api = {
 
   getWorkspaces: () =>
     request<{
-      workspaceInfos?: { workspaceUri: string; gitRootUri?: string }[];
+      workspaceInfos?: {
+        workspaceUri: string;
+        gitRootUri?: string;
+        projectId?: string;
+        projectName?: string;
+      }[];
     }>("/api/workspaces"),
 
   addWorkspace: (path: string) =>
-    request<{ workspaceUri: string; name: string }>("/api/workspaces", {
-      method: "POST",
-      body: JSON.stringify({ path }),
-    }),
+    request<{ workspaceUri: string; name: string; projectId?: string }>(
+      "/api/workspaces",
+      {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      },
+    ),
 
-  startConversation: (workspaceUri?: string, fileAccessGranted = false) =>
+  startConversation: (
+    workspaceUri?: string,
+    fileAccessGranted = false,
+    projectId?: string,
+  ) =>
     request<{ cascadeId: string }>("/api/conversations", {
       method: "POST",
       body: JSON.stringify({
         ...(workspaceUri ? { workspaceFolderAbsoluteUri: workspaceUri } : {}),
+        ...(projectId ? { projectId } : {}),
         fileAccessGranted,
       }),
     }),

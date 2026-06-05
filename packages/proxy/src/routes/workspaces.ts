@@ -3,13 +3,22 @@
  */
 
 import type { Hono } from "hono";
-import { access } from "node:fs/promises";
-import { isAbsolute, basename } from "node:path";
+import { randomUUID } from "node:crypto";
+import { access, readdir, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { isAbsolute, basename, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { discovery, rpc } from "../routing.js";
 import { handleRPCError } from "../errors.js";
 import { extractConversationWorkspaces } from "../metadata.js";
 import { RPCError } from "../rpc.js";
+
+interface WorkspaceInfo {
+  workspaceUri: string;
+  gitRootUri?: string;
+  projectId?: string;
+  projectName?: string;
+}
 
 async function localFileWorkspaceExists(workspaceUri: string): Promise<boolean> {
   if (!workspaceUri.startsWith("file://")) return true;
@@ -21,14 +30,66 @@ async function localFileWorkspaceExists(workspaceUri: string): Promise<boolean> 
   }
 }
 
+function projectWorkspaceUris(project: unknown): string[] {
+  const resources = (project as { projectResources?: { resources?: unknown[] } })
+    ?.projectResources?.resources;
+  if (!Array.isArray(resources)) return [];
+
+  return resources.flatMap((resource) => {
+    const gitFolder = (resource as { gitFolder?: { folderUri?: unknown } })
+      ?.gitFolder;
+    return typeof gitFolder?.folderUri === "string" ? [gitFolder.folderUri] : [];
+  });
+}
+
+async function readAntigravityProjectIndex(): Promise<
+  Map<string, { projectId: string; projectName?: string }>
+> {
+  const index = new Map<string, { projectId: string; projectName?: string }>();
+  const projectsDir = join(homedir(), ".gemini", "config", "projects");
+  let files: string[];
+  try {
+    files = await readdir(projectsDir);
+  } catch {
+    return index;
+  }
+
+  await Promise.all(
+    files
+      .filter((file) => file.endsWith(".json"))
+      .map(async (file) => {
+        try {
+          const raw = await readFile(join(projectsDir, file), "utf8");
+          const project = JSON.parse(raw) as {
+            id?: unknown;
+            name?: unknown;
+          };
+          if (typeof project.id !== "string" || !project.id) return;
+          const projectName =
+            typeof project.name === "string" && project.name
+              ? project.name
+              : undefined;
+          for (const workspaceUri of projectWorkspaceUris(project)) {
+            index.set(workspaceUri, {
+              projectId: project.id,
+              ...(projectName ? { projectName } : {}),
+            });
+          }
+        } catch {
+          // Ignore malformed project config files.
+        }
+      }),
+  );
+
+  return index;
+}
+
 export function registerWorkspaceRoutes(app: Hono): void {
   app.get("/api/workspaces", async (c) => {
     try {
       const instances = await discovery.getInstances();
-      const workspaceMap = new Map<
-        string,
-        { workspaceUri: string; gitRootUri?: string }
-      >();
+      const projectIndex = await readAntigravityProjectIndex();
+      const workspaceMap = new Map<string, WorkspaceInfo>();
       let homeDirPath = "";
       let homeDirUri = "";
 
@@ -44,7 +105,8 @@ export function registerWorkspaceRoutes(app: Hono): void {
             if (data.homeDirUri) homeDirUri = data.homeDirUri;
             for (const info of data.workspaceInfos ?? []) {
               if (!(await localFileWorkspaceExists(info.workspaceUri))) continue;
-              workspaceMap.set(info.workspaceUri, info);
+              const project = projectIndex.get(info.workspaceUri);
+              workspaceMap.set(info.workspaceUri, { ...info, ...project });
             }
           } catch {
             // Skip unreachable instances
@@ -63,11 +125,13 @@ export function registerWorkspaceRoutes(app: Hono): void {
                 const workspaceUri = workspace.workspaceFolderAbsoluteUri;
                 if (!workspaceUri || workspaceMap.has(workspaceUri)) continue;
                 if (!(await localFileWorkspaceExists(workspaceUri))) continue;
+                const project = projectIndex.get(workspaceUri);
                 workspaceMap.set(workspaceUri, {
                   workspaceUri,
                   ...(workspace.gitRootAbsoluteUri
                     ? { gitRootUri: workspace.gitRootAbsoluteUri }
                     : {}),
+                  ...project,
                 });
               }
             }
@@ -99,6 +163,7 @@ export function registerWorkspaceRoutes(app: Hono): void {
       }
 
       const workspaceUri = pathToFileURL(folderPath).href;
+      const projectId = randomUUID();
       const name =
         typeof body.name === "string" && body.name.trim()
           ? body.name.trim()
@@ -114,13 +179,13 @@ export function registerWorkspaceRoutes(app: Hono): void {
           "CreateProject",
           {
             project: {
+              id: projectId,
               name,
               projectResources: {
                 resources: [
                   {
                     gitFolder: {
                       folderUri: workspaceUri,
-                      allowWrite: true,
                     },
                   },
                 ],
@@ -143,7 +208,7 @@ export function registerWorkspaceRoutes(app: Hono): void {
         inst,
       );
 
-      return c.json({ workspaceUri, name }, 201);
+      return c.json({ workspaceUri, name, projectId }, 201);
     } catch (err) {
       return handleRPCError(c, err);
     }

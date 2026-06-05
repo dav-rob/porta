@@ -72,6 +72,7 @@ describe("api client", () => {
         json: async () => ({
           workspaceUri,
           name: "new-app",
+          projectId: "project-123",
         }),
       }),
     );
@@ -79,6 +80,7 @@ describe("api client", () => {
     await expect(api.addWorkspace(workspacePath)).resolves.toEqual({
       workspaceUri,
       name: "new-app",
+      projectId: "project-123",
     });
 
     expect(fetch).toHaveBeenCalledWith(
@@ -86,6 +88,35 @@ describe("api client", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ path: workspacePath }),
+      }),
+    );
+  });
+
+  it("sends projectId when starting a workspace conversation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ cascadeId: "cascade-1" }),
+      }),
+    );
+
+    await api.startConversation(
+      "file:///home/user/projects/new-app",
+      false,
+      "project-123",
+    );
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/conversations",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          workspaceFolderAbsoluteUri: "file:///home/user/projects/new-app",
+          projectId: "project-123",
+          fileAccessGranted: false,
+        }),
       }),
     );
   });
