@@ -36,7 +36,7 @@ import {
   IconMessageCircle,
   IconAlertTriangle,
 } from "./Icons";
-import type { ChatMessage } from "../types";
+import type { ChatMessage, PermissionMode } from "../types";
 
 interface Props {
   cascadeId: string;
@@ -59,6 +59,7 @@ interface Props {
   hardRefreshKey?: number;
   totalStepCount?: number;
   isConversationRunning?: boolean;
+  permissionMode: PermissionMode;
   /** Called when the WS reports the agent went idle — triggers sidebar refresh. */
   onSidebarRefresh?: () => void;
 }
@@ -387,6 +388,7 @@ export function ChatPanel({
   hardRefreshKey = 0,
   totalStepCount,
   isConversationRunning = false,
+  permissionMode,
   onSidebarRefresh,
 }: Props) {
   const {
@@ -403,6 +405,7 @@ export function ChatPanel({
     totalStepCount,
     onSidebarRefresh,
     isConversationRunning,
+    permissionMode,
   );
 
   // Soft re-fetch when refreshKey changes (e.g. after send)

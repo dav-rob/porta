@@ -316,6 +316,7 @@ function ChatView() {
             hardRefreshKey={hardRefreshKey}
             totalStepCount={activeConv?.summary.stepCount}
             isConversationRunning={isRunning}
+            permissionMode={permissionMode}
             onSidebarRefresh={refresh}
           />
         ) : (
