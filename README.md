@@ -7,6 +7,9 @@
 Porta is a mobile-friendly web UI for local
 [Antigravity](https://antigravity.google/) agent sessions.
 
+This is a Tailscale-focused fork of
+[L1M80/porta](https://github.com/L1M80/porta).
+
 This fork is primarily aimed at using **Tailscale + iPhone** to get a
 Codex-like mobile control surface for Antigravity: launch the desktop app over
 SSH, start Porta with `runporta`, then use the Porta web UI from the phone.
