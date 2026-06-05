@@ -74,7 +74,7 @@ const listenAddress = formatListenAddress(HOST, PORT);
 
 console.log(`🚀 Porta proxy starting on ${listenAddress}`);
 console.log(
-  `⚠️ Command auto-approve: ${isAutoApproveCommandsEnabled() ? "enabled" : "disabled"}`,
+  `⚠️ Command env fallback auto-approve: ${isAutoApproveCommandsEnabled() ? "enabled" : "disabled"}`,
 );
 
 const server = createAdaptorServer({ fetch: app.fetch, port: PORT });
