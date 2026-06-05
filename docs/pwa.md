@@ -16,5 +16,5 @@ its own window and receives updates automatically.
 
 > **Note:** PWA installation requires HTTPS or `localhost`. If you access
 > Porta over LAN by IP address, the install prompt will not appear.
-> Use [Cloudflare remote access](../README.md#remote-access-with-cloudflare) for a
+> Use [Cloudflare remote access](cloudflare.md) for a
 > full PWA experience on mobile.
