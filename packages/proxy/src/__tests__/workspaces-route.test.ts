@@ -124,7 +124,9 @@ describe("GET /api/workspaces", () => {
     const ls = makeInstance({ pid: 5 });
     mockGetInstances.mockResolvedValue([ls]);
     mockAccess.mockImplementation(async (path: string) => {
-      if (path.endsWith("/deleted-project")) {
+      // Use includes() rather than endsWith("/...") so it works on Windows
+      // where fileURLToPath produces backslash-separated paths.
+      if (path.includes("deleted-project")) {
         throw new Error("missing");
       }
     });
@@ -133,10 +135,10 @@ describe("GET /api/workspaces", () => {
         return {
           workspaceInfos: [
             {
-              workspaceUri: "file:///Users/davidroberts/projects/deleted-project",
+              workspaceUri: "file:///home/user/projects/deleted-project",
             },
             {
-              workspaceUri: "file:///Users/davidroberts/projects/active-project",
+              workspaceUri: "file:///home/user/projects/active-project",
             },
           ],
         };
@@ -153,7 +155,7 @@ describe("GET /api/workspaces", () => {
     expect(res.status).toBe(200);
     expect(body.workspaceInfos).toEqual([
       {
-        workspaceUri: "file:///Users/davidroberts/projects/active-project",
+        workspaceUri: "file:///home/user/projects/active-project",
       },
     ]);
   });
@@ -185,20 +187,20 @@ describe("POST /api/workspaces", () => {
 
     const res = await app().request("/api/workspaces", {
       method: "POST",
-      body: JSON.stringify({ path: "/Users/davidroberts/projects/new-app" }),
+      body: JSON.stringify({ path: "/home/user/projects/new-app" }),
       headers: { "Content-Type": "application/json" },
     });
     const body = await res.json();
 
     expect(res.status).toBe(201);
     expect(body).toEqual({
-      workspaceUri: "file:///Users/davidroberts/projects/new-app",
+      workspaceUri: "file:///home/user/projects/new-app",
       name: "new-app",
     });
     expect(mockRpcCall).toHaveBeenNthCalledWith(
       1,
       "ValidateProject",
-      { location: "file:///Users/davidroberts/projects/new-app" },
+      { location: "file:///home/user/projects/new-app" },
       ls,
     );
     expect(mockRpcCall).toHaveBeenNthCalledWith(
@@ -211,7 +213,7 @@ describe("POST /api/workspaces", () => {
             resources: [
               {
                 gitFolder: {
-                  folderUri: "file:///Users/davidroberts/projects/new-app",
+                  folderUri: "file:///home/user/projects/new-app",
                   allowWrite: true,
                 },
               },
@@ -225,7 +227,7 @@ describe("POST /api/workspaces", () => {
       3,
       "AddTrackedWorkspace",
       {
-        workspace: "/Users/davidroberts/projects/new-app",
+        workspace: "/home/user/projects/new-app",
         isPassiveWorkspace: true,
       },
       ls,
@@ -244,19 +246,19 @@ describe("POST /api/workspaces", () => {
 
     const res = await app().request("/api/workspaces", {
       method: "POST",
-      body: JSON.stringify({ path: "/Users/davidroberts/projects/test-porta-1" }),
+      body: JSON.stringify({ path: "/home/user/projects/test-porta-1" }),
       headers: { "Content-Type": "application/json" },
     });
     const body = await res.json();
 
     expect(res.status).toBe(201);
     expect(body.workspaceUri).toBe(
-      "file:///Users/davidroberts/projects/test-porta-1",
+      "file:///home/user/projects/test-porta-1",
     );
     expect(mockRpcCall).toHaveBeenLastCalledWith(
       "AddTrackedWorkspace",
       {
-        workspace: "/Users/davidroberts/projects/test-porta-1",
+        workspace: "/home/user/projects/test-porta-1",
         isPassiveWorkspace: true,
       },
       ls,
