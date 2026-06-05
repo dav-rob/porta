@@ -73,6 +73,30 @@ describe("stepsToMessages — edge cases", () => {
     expect(msgs[0].step?.runCommand?.proposedCommandLine).toBe("rm -rf /");
   });
 
+  it("emits newer requestedInteraction file permissions as dedicated messages", () => {
+    const step: TrajectoryStep = {
+      type: "CORTEX_STEP_TYPE_CODE_ACTION",
+      status: "CORTEX_STEP_STATUS_WAITING",
+      codeAction: {
+        description: "Create plugin.json",
+      },
+      requestedInteraction: {
+        permission: {
+          resource: {
+            action: "write_file",
+            target: "/home/user/.gemini/config/plugins/ui-lab/plugin.json",
+          },
+        },
+      },
+    };
+
+    const msgs = stepsToMessages([step]);
+
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].type).toBe("CORTEX_STEP_TYPE_FILE_PERMISSION");
+    expect(msgs[0].step).toBe(step);
+  });
+
   // ── Run command with fallback to command field ──
 
   it("uses command field when commandLine is missing", () => {

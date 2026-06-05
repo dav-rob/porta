@@ -26,6 +26,21 @@ function basename(uriOrPath: string): string {
 export function getFilePermissionRequest(
   step: TrajectoryStep,
 ): FilePermissionRequest | undefined {
+  const requestedResource = step.requestedInteraction?.permission?.resource;
+  if (
+    requestedResource?.target &&
+    (requestedResource.action === "read_file" ||
+      requestedResource.action === "write_file" ||
+      requestedResource.action === "list_directory")
+  ) {
+    return {
+      absolutePathUri: requestedResource.target.startsWith("file://")
+        ? requestedResource.target
+        : `file://${requestedResource.target}`,
+      isDirectory: requestedResource.action === "list_directory",
+    };
+  }
+
   return (
     step.filePermissionRequest ??
     step.viewFile?.filePermissionRequest ??
