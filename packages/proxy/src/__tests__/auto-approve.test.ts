@@ -86,6 +86,48 @@ describe("maybeAutoApproveCommands", () => {
     expect(approve).toHaveBeenCalledTimes(1);
   });
 
+  it("approves separate permission prompts on the same command step", async () => {
+    vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
+    const approve = vi.fn().mockResolvedValue(undefined);
+
+    await maybeAutoApproveCommands(
+      "cascade-1",
+      [
+        {
+          ...eligibleStep,
+          requestedInteraction: {
+            permission: {
+              resource: {
+                action: "command",
+                target: "curl -s http://localhost:3170/api/health",
+              },
+            },
+          },
+        },
+      ],
+      approve,
+    );
+    await maybeAutoApproveCommands(
+      "cascade-1",
+      [
+        {
+          ...eligibleStep,
+          requestedInteraction: {
+            permission: {
+              resource: {
+                action: "command",
+                target: "jq .metadata",
+              },
+            },
+          },
+        },
+      ],
+      approve,
+    );
+
+    expect(approve).toHaveBeenCalledTimes(2);
+  });
+
   it("retries a command step when the previous approval failed", async () => {
     vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
     const approve = vi

@@ -17,7 +17,7 @@ export function clearAutoApprovedCommandsForTests(): void {
   approvedCommandKeys.clear();
 }
 
-function isAutoApproveCommandsEnabled(): boolean {
+export function isAutoApproveCommandsEnabled(): boolean {
   return process.env.PORTA_AUTO_APPROVE_COMMANDS === "1";
 }
 
@@ -27,6 +27,27 @@ function commandText(runCommand: Record<string, unknown>): string {
     if (typeof value === "string" && value.length > 0) return value;
   }
   return "(unknown command)";
+}
+
+function requestedPermissionResourceKey(step: Record<string, unknown>): string {
+  const requestedInteraction = step.requestedInteraction;
+  if (!requestedInteraction || typeof requestedInteraction !== "object") {
+    return "permission";
+  }
+
+  const permission = (requestedInteraction as Record<string, unknown>).permission;
+  if (!permission || typeof permission !== "object") return "permission";
+
+  const resource = (permission as Record<string, unknown>).resource;
+  if (!resource || typeof resource !== "object") return "permission";
+
+  const action = (resource as Record<string, unknown>).action;
+  const target = (resource as Record<string, unknown>).target;
+  if (typeof action !== "string" || typeof target !== "string") {
+    return "permission";
+  }
+
+  return `${action}:${target}`;
 }
 
 function approvalCandidate(
@@ -53,7 +74,8 @@ function approvalCandidate(
   }
   if (typeof stepIndex !== "number") return undefined;
 
-  const key = `${cascadeId}:${trajectoryId}:${stepIndex}`;
+  const permissionKey = requestedPermissionResourceKey(record);
+  const key = `${cascadeId}:${trajectoryId}:${stepIndex}:${permissionKey}`;
   return {
     key,
     command: commandText(record.runCommand as Record<string, unknown>),

@@ -1,13 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildRecoverableStepDelta,
   getActivePollFetchOffset,
+  prepareFetchedStepsForPush,
   shouldActivateIdlePolling,
   validateWebSocketUpgrade,
 } from "../ws.js";
+import { clearAutoApprovedCommandsForTests } from "../auto-approve.js";
 import { getAllowedOrigins } from "../origins.js";
 
 describe("WS step recovery", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    clearAutoApprovedCommandsForTests();
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
   it("skips overlap before a known poison offset", () => {
     const delta = buildRecoverableStepDelta(
       105,
@@ -60,6 +70,43 @@ describe("WS step recovery", () => {
     expect(shouldActivateIdlePolling(12, "CASCADE_RUN_STATUS_IDLE", 12)).toBe(
       false,
     );
+  });
+
+  it("auto-approves waiting command steps before websocket push", async () => {
+    vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
+    const approve = vi.fn().mockResolvedValue(undefined);
+
+    const steps = await prepareFetchedStepsForPush(
+      "cascade-1",
+      3,
+      [
+        {
+          status: "CORTEX_STEP_STATUS_WAITING",
+          runCommand: {
+            proposedCommandLine: "curl -s http://localhost:3170/health",
+          },
+          metadata: {
+            sourceTrajectoryStepInfo: {
+              trajectoryId: "trajectory-1",
+              stepIndex: 9,
+            },
+          },
+        },
+      ],
+      approve,
+    );
+
+    expect(approve).toHaveBeenCalledWith({
+      cascadeId: "cascade-1",
+      interaction: {
+        trajectoryId: "trajectory-1",
+        stepIndex: 9,
+        permission: {
+          allow: true,
+        },
+      },
+    });
+    expect(steps).toHaveLength(1);
   });
 });
 

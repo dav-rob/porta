@@ -31,6 +31,7 @@ import {
   placeholderStep,
 } from "./step-recovery.js";
 import { conversationSignals } from "./signals.js";
+import { maybeAutoApproveCommands } from "./auto-approve.js";
 
 /** Active polling interval (ms). */
 const ACTIVE_INTERVAL = 50;
@@ -74,6 +75,14 @@ const TERMINAL_STATUSES = new Set([
 ]);
 
 type PollState = "idle" | "active";
+
+type ApproveCommandRequest = Parameters<typeof maybeAutoApproveCommands>[2] extends (
+  request: infer Request,
+) => Promise<unknown>
+  ? Request
+  : never;
+
+type ApproveCommand = (request: ApproveCommandRequest) => Promise<unknown>;
 
 type UpgradeValidationResult =
   | { ok: true; cascadeId: string }
@@ -129,6 +138,16 @@ export function buildRecoverableStepDelta(
     nextMinFetchOffset: Math.max(minFetchOffset, nextValidOffset),
     grew: nextValidOffset > knownEndOffset,
   };
+}
+
+export async function prepareFetchedStepsForPush(
+  cascadeId: string,
+  offset: number,
+  steps: unknown[],
+  approve: ApproveCommand,
+): Promise<unknown[]> {
+  await maybeAutoApproveCommands(cascadeId, steps, approve);
+  return messageTracker.annotateSteps(cascadeId, offset, steps);
 }
 
 export function isWebSocketOriginAllowed(
@@ -309,10 +328,12 @@ export function setupWebSocket(
 
           const newSteps = data.steps ?? [];
           if (newSteps.length === 0) return false;
-          const annotatedSteps = messageTracker.annotateSteps(
+          const annotatedSteps = await prepareFetchedStepsForPush(
             cascadeId,
             fetchOffset,
             newSteps,
+            (request) =>
+              rpcForConversation("HandleCascadeUserInteraction", cascadeId, request),
           );
 
           const newEnd = fetchOffset + newSteps.length;

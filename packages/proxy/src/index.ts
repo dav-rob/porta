@@ -23,6 +23,7 @@ import {
 } from "./exposure.js";
 import { getAllowedOrigins, resolveCorsOrigin } from "./origins.js";
 import { setupWebSocket } from "./ws.js";
+import { isAutoApproveCommandsEnabled } from "./auto-approve.js";
 
 const PORT = parseInt(process.env.PORTA_PORT ?? "3170", 10);
 const HOST = resolveProxyHost();
@@ -72,6 +73,9 @@ registerRpcPassthroughRoutes(app);
 const listenAddress = formatListenAddress(HOST, PORT);
 
 console.log(`🚀 Porta proxy starting on ${listenAddress}`);
+console.log(
+  `⚠️ Command auto-approve: ${isAutoApproveCommandsEnabled() ? "enabled" : "disabled"}`,
+);
 
 const server = createAdaptorServer({ fetch: app.fetch, port: PORT });
 
