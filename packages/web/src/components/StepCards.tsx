@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   IconCopy,
   IconCheck,
@@ -166,6 +166,22 @@ export function CommandCard({ step, onCommandAction }: CommandCardProps) {
   const command = isWaiting
     ? (cmd.proposedCommandLine ?? cmd.commandLine ?? cmd.command ?? "")
     : (cmd.commandLine ?? cmd.command ?? "");
+
+
+  // The backend executes chained commands sequentially. If 'echo' finishes and
+  // it pauses for 'sleep', the step status goes WAITING -> RUNNING -> WAITING
+  // in less than 1 millisecond. The frontend's 50ms polling loop misses the
+  // RUNNING state entirely, so 'isWaiting' stays true and the UI never resets.
+  // By watching the actual transition history length, we guarantee a reset.
+  const transitionsCount = Array.isArray((step.metadata as any)?.internalMetadata?.statusTransitions)
+    ? (step.metadata as any).internalMetadata.statusTransitions.length
+    : 0;
+
+  useEffect(() => {
+    if (isWaiting) {
+      setResponded(false);
+    }
+  }, [isWaiting, transitionsCount]);
   const output = cmd.combinedOutput?.full ?? cmd.output ?? "";
   const cwd = cmd.cwd;
   const exitCode = cmd.exitCode;
