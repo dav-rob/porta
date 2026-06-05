@@ -89,7 +89,7 @@ type ApproveCommandRequest = Parameters<typeof maybeAutoApproveCommands>[2] exte
 type ApproveCommand = (request: ApproveCommandRequest) => Promise<unknown>;
 
 type UpgradeValidationResult =
-  | { ok: true; cascadeId: string; permissionMode: PermissionMode }
+  | { ok: true; cascadeId: string; permissionMode?: PermissionMode }
   | { ok: false; code: "not_found" | "forbidden_origin" };
 
 function unrefTimer(
@@ -219,7 +219,7 @@ export function setupWebSocket(
       ws: WebSocket,
       _req: IncomingMessage,
       cascadeId: string,
-      permissionMode: PermissionMode,
+      permissionMode: PermissionMode | undefined,
     ) => {
       const shortId = cascadeId.slice(0, 8);
       console.log(`[ws:${shortId}] connected`);
