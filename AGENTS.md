@@ -3,9 +3,9 @@
 Brief notes for future agents working on Porta.
 
 - Porta is a React web UI plus a local TypeScript proxy for Antigravity.
-- This fork is Tailscale/iPhone first: keep the README and personal scripts
-  focused on launching Antigravity/Codex over SSH and using Porta as a
-  Codex-like mobile UI.
+- This fork is remote-access focused: keep the README balanced between local,
+  Tailscale, and Cloudflare use. Keep the Tailscale/iPhone helper scripts in
+  `scripts/util` and detailed setup docs outside the main README.
 - The proxy talks to Antigravity's private local language server API, not a
   stable public Google SDK. Keep all assumptions isolated in `packages/proxy`.
 - Main RPC transport lives in `packages/proxy/src/rpc.ts`; LS discovery lives in

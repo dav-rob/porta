@@ -1,8 +1,7 @@
 # Cloudflare Remote Access
 
-This fork is primarily designed for Tailscale access. Cloudflare remains
-available for users who want a public hostname, Cloudflare Pages, Tunnel, and
-Zero Trust in front of Porta.
+Cloudflare is an option for users who want a public hostname, Cloudflare Pages,
+Tunnel, and optional Zero Trust access in front of Porta.
 
 ## Overview
 

@@ -7,17 +7,16 @@
 Porta is a mobile-friendly web UI for local
 [Antigravity](https://antigravity.google/) agent sessions.
 
-This is a Tailscale-focused fork of
-[L1M80/porta](https://github.com/L1M80/porta).
+This is a remote-access focused fork of
+[L1M80/porta](https://github.com/L1M80/porta). It keeps Porta self-hosted while
+making it practical to use from a phone, tablet, or remote browser.
 
-This fork is primarily aimed at using **Tailscale + iPhone** to get a
-Codex-like mobile control surface for Antigravity: launch the desktop app over
-SSH, start Porta with `runporta`, then use the Porta web UI from the phone.
-
-- [Tailscale workflow](#tailscale-workflow)
-- [Full Access mode](#full-access-mode)
+- [Remote access](#remote-access)
+- [Agent permissions](#agent-permissions)
+- [Permission details](#permission-details)
 - [Architecture](#architecture)
-- [Optional Cloudflare remote access](docs/cloudflare.md)
+- [Tailscale setup](docs/tailscale.md)
+- [Cloudflare setup](docs/cloudflare.md)
 
 ## Agent Permissions
 
@@ -33,11 +32,9 @@ terminal command prompts for the workspace.
 
 Prerequisites:
 
-- macOS machine running Antigravity
-- [Tailscale](https://tailscale.com/download) on the Mac and iPhone
+- A machine running Antigravity
 - [Node.js](https://nodejs.org/) 22+
 - [pnpm](https://pnpm.io/) 10+
-- An iPhone SSH client such as Termius, Terminus, or similar
 
 Install Porta:
 
@@ -48,81 +45,29 @@ pnpm install
 cp .env.example .env
 ```
 
-Copy the personal launcher:
+Start Porta locally:
 
 ```bash
-cp scripts/util/runporta.sh ~/runporta.sh
-chmod +x ~/runporta.sh
+pnpm dev
 ```
 
-Add a shell alias if you want the command to be just `runporta`:
+Open `http://localhost:5173` in your browser.
 
-```bash
-alias runporta="$HOME/runporta.sh"
-```
+## Remote Access
 
-Start, stop, and restart Porta with:
+Porta can be used locally, over a private network, or through a secured tunnel:
 
-```bash
-runporta start
-runporta stop
-runporta restart
-```
+- Local/LAN: simplest setup for devices on the same network.
+- [Tailscale](docs/tailscale.md): private mesh VPN access, useful for iPhone
+  and iPad workflows.
+- [Cloudflare](docs/cloudflare.md): public hostname with Cloudflare Tunnel,
+  Pages, and optional Zero Trust access.
 
-When started, the script prints the Tailscale URL to open on the iPhone, for
-example:
+For Tailscale use, `scripts/util/runporta.sh` is a convenience wrapper around
+`pnpm dev:tailscale`. It is optional; the normal development command remains
+`pnpm dev`.
 
-```text
-Phone/iPad: http://100.123.104.63:5173
-```
-
-## Tailscale Workflow
-
-The intended flow for this fork is:
-
-1. Install and connect Tailscale on the Mac and iPhone.
-2. SSH to the Mac from the iPhone using Termius or a similar app.
-3. Launch Antigravity or Codex on the Mac from that SSH session.
-4. Run `runporta start`.
-5. Open the printed Tailscale URL on the iPhone.
-6. Use Porta as the mobile web UI for Antigravity.
-
-### Launching Antigravity and Codex from SSH
-
-Add this helper to `~/.zshrc`, or source the repo copy from there:
-
-```bash
-source ~/projects/quick-scripts/porta/scripts/util/launch_bg_app.zsh
-```
-
-The helper defines:
-
-```bash
-launch_bg_app() {
-    local app_name="$1"
-    if [[ -z "$app_name" ]]; then
-        echo "Usage: launch_bg_app \"App Name\""
-        return 1
-    fi
-
-    nohup open -na "$app_name" >/tmp/${app_name// /_}.log 2>&1 &
-}
-
-alias runantigravity='launch_bg_app "Antigravity"'
-alias runcodex='launch_bg_app "Codex"'
-alias runporta="$HOME/runporta.sh"
-```
-
-Then from the iPhone SSH session:
-
-```bash
-runantigravity
-runporta start
-```
-
-Use `runcodex` the same way when you want to launch Codex.
-
-## Full Access Mode
+## Permission Details
 
 Porta has a workspace permission selector in the chat composer:
 
@@ -206,11 +151,6 @@ The proxy then applies the mode while handling incoming Antigravity steps:
 Full Access does not change Antigravity globally. It is Porta approving
 terminal command permission steps on the user's behalf for the active
 workspace.
-
-## Other Remote Access
-
-This fork is Tailscale-first. Cloudflare access is still possible, but it is no
-longer the primary README path. See [Cloudflare remote access](docs/cloudflare.md).
 
 ## Development
 
