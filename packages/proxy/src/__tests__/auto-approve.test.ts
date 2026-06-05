@@ -52,6 +52,28 @@ describe("maybeAutoApproveCommands", () => {
     });
   });
 
+  it("does not use env override when explicit default mode is provided", async () => {
+    vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
+    const approve = vi.fn().mockResolvedValue(undefined);
+
+    await maybeAutoApproveCommands(
+      "cascade-1",
+      [eligibleStep],
+      approve,
+      "default",
+    );
+
+    expect(approve).not.toHaveBeenCalled();
+  });
+
+  it("approves when explicit full mode is provided without env flag", async () => {
+    const approve = vi.fn().mockResolvedValue(undefined);
+
+    await maybeAutoApproveCommands("cascade-1", [eligibleStep], approve, "full");
+
+    expect(approve).toHaveBeenCalledTimes(1);
+  });
+
   it("ignores waiting steps that are not runCommand approvals", async () => {
     vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
     const approve = vi.fn().mockResolvedValue(undefined);

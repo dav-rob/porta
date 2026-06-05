@@ -108,6 +108,34 @@ describe("WS step recovery", () => {
     });
     expect(steps).toHaveLength(1);
   });
+
+  it("does not use env override when websocket push has explicit default mode", async () => {
+    vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
+    const approve = vi.fn().mockResolvedValue(undefined);
+
+    await prepareFetchedStepsForPush(
+      "cascade-1",
+      3,
+      [
+        {
+          status: "CORTEX_STEP_STATUS_WAITING",
+          runCommand: {
+            proposedCommandLine: "curl -s http://localhost:3170/health",
+          },
+          metadata: {
+            sourceTrajectoryStepInfo: {
+              trajectoryId: "trajectory-1",
+              stepIndex: 9,
+            },
+          },
+        },
+      ],
+      approve,
+      "default",
+    );
+
+    expect(approve).not.toHaveBeenCalled();
+  });
 });
 
 describe("WS upgrade validation", () => {
@@ -123,7 +151,17 @@ describe("WS upgrade validation", () => {
         3100,
         allowedOrigins,
       ),
-    ).toEqual({ ok: true, cascadeId: "abc123" });
+    ).toEqual({ ok: true, cascadeId: "abc123", permissionMode: "default" });
+  });
+
+  it("accepts explicit full permission mode on conversation WS paths", () => {
+    expect(
+      validateWebSocketUpgrade(
+        "/api/conversations/abc123/ws?permissionMode=full",
+        "http://localhost:5173",
+        3100,
+      ),
+    ).toEqual({ ok: true, cascadeId: "abc123", permissionMode: "full" });
   });
 
   it("rejects cross-origin upgrades on the WS endpoint", () => {

@@ -31,7 +31,10 @@ import {
   placeholderStep,
 } from "./step-recovery.js";
 import { conversationSignals } from "./signals.js";
-import { maybeAutoApproveCommands } from "./auto-approve.js";
+import {
+  maybeAutoApproveCommands,
+  type PermissionMode,
+} from "./auto-approve.js";
 
 /** Active polling interval (ms). */
 const ACTIVE_INTERVAL = 50;
@@ -85,7 +88,7 @@ type ApproveCommandRequest = Parameters<typeof maybeAutoApproveCommands>[2] exte
 type ApproveCommand = (request: ApproveCommandRequest) => Promise<unknown>;
 
 type UpgradeValidationResult =
-  | { ok: true; cascadeId: string }
+  | { ok: true; cascadeId: string; permissionMode: PermissionMode }
   | { ok: false; code: "not_found" | "forbidden_origin" };
 
 function unrefTimer(
@@ -145,8 +148,9 @@ export async function prepareFetchedStepsForPush(
   offset: number,
   steps: unknown[],
   approve: ApproveCommand,
+  permissionMode?: PermissionMode,
 ): Promise<unknown[]> {
-  await maybeAutoApproveCommands(cascadeId, steps, approve);
+  await maybeAutoApproveCommands(cascadeId, steps, approve, permissionMode);
   return messageTracker.annotateSteps(cascadeId, offset, steps);
 }
 
@@ -173,7 +177,9 @@ export function validateWebSocketUpgrade(
   if (!isWebSocketOriginAllowed(origin, allowedOrigins)) {
     return { ok: false, code: "forbidden_origin" };
   }
-  return { ok: true, cascadeId: match[1] };
+  const permissionMode =
+    url.searchParams.get("permissionMode") === "full" ? "full" : "default";
+  return { ok: true, cascadeId: match[1], permissionMode };
 }
 
 export function setupWebSocket(
@@ -201,13 +207,18 @@ export function setupWebSocket(
     }
 
     wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req, upgrade.cascadeId);
+      wss.emit("connection", ws, req, upgrade.cascadeId, upgrade.permissionMode);
     });
   });
 
   wss.on(
     "connection",
-    (ws: WebSocket, _req: IncomingMessage, cascadeId: string) => {
+    (
+      ws: WebSocket,
+      _req: IncomingMessage,
+      cascadeId: string,
+      permissionMode: PermissionMode,
+    ) => {
       const shortId = cascadeId.slice(0, 8);
       console.log(`[ws:${shortId}] connected`);
 
@@ -334,6 +345,7 @@ export function setupWebSocket(
             newSteps,
             (request) =>
               rpcForConversation("HandleCascadeUserInteraction", cascadeId, request),
+            permissionMode,
           );
 
           const newEnd = fetchOffset + newSteps.length;

@@ -304,6 +304,8 @@ export function registerConversationRoutes(app: Hono): void {
     const limit = c.req.query("limit")
       ? parseInt(c.req.query("limit")!, 10)
       : undefined;
+    const permissionMode =
+      c.req.query("permissionMode") === "full" ? "full" : "default";
 
     try {
       let resolvedOffset = offset;
@@ -400,6 +402,7 @@ export function registerConversationRoutes(app: Hono): void {
 
       await maybeAutoApproveCommands(id, stepsArray, (request) =>
         rpcForConversation("HandleCascadeUserInteraction", id, request),
+        permissionMode,
       );
 
       return c.json({

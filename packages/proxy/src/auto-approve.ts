@@ -11,14 +11,21 @@ type ApproveCommandRequest = {
 
 type ApproveCommand = (request: ApproveCommandRequest) => Promise<unknown>;
 
+export type PermissionMode = "default" | "full";
+
 const approvedCommandKeys = new Set<string>();
 
 export function clearAutoApprovedCommandsForTests(): void {
   approvedCommandKeys.clear();
 }
 
-export function isAutoApproveCommandsEnabled(): boolean {
+function shouldAutoApproveCommands(mode?: PermissionMode): boolean {
+  if (mode) return mode === "full";
   return process.env.PORTA_AUTO_APPROVE_COMMANDS === "1";
+}
+
+export function isAutoApproveCommandsEnabled(): boolean {
+  return shouldAutoApproveCommands();
 }
 
 function commandText(runCommand: Record<string, unknown>): string {
@@ -96,8 +103,9 @@ export async function maybeAutoApproveCommands(
   cascadeId: string,
   steps: unknown[],
   approve: ApproveCommand,
+  permissionMode?: PermissionMode,
 ): Promise<void> {
-  if (!isAutoApproveCommandsEnabled()) return;
+  if (!shouldAutoApproveCommands(permissionMode)) return;
 
   for (const step of steps) {
     const candidate = approvalCandidate(cascadeId, step);
