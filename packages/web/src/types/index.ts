@@ -232,9 +232,13 @@ export interface ChatMessage {
 
 // ── Client Settings ──
 
+export type PermissionMode = "default" | "full";
+
 export interface ClientSettings {
   /** Model ID used when the user hasn't explicitly picked one per-message. */
   defaultModel: string | null;
   /** Planner type used when the user hasn't explicitly picked one per-message. */
   defaultPlannerType: "conversational" | "planning";
+  /** Workspace/project scoped command permission mode. */
+  workspacePermissionModes: Record<string, PermissionMode>;
 }

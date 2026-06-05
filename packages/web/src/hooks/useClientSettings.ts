@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import type { ClientSettings } from "../types";
+import type { ClientSettings, PermissionMode } from "../types";
 import { DEFAULT_MODEL } from "../constants";
 
 const STORAGE_KEY = "porta:settings";
@@ -14,7 +14,29 @@ const STORAGE_KEY = "porta:settings";
 const DEFAULT_SETTINGS: ClientSettings = {
   defaultModel: DEFAULT_MODEL,
   defaultPlannerType: "conversational",
+  workspacePermissionModes: {},
 };
+
+export function permissionModeForWorkspace(
+  settings: ClientSettings,
+  workspaceKey: string | null | undefined,
+): PermissionMode {
+  if (!workspaceKey) return "default";
+  return settings.workspacePermissionModes[workspaceKey] ?? "default";
+}
+
+export function workspacePermissionPatch(
+  settings: ClientSettings,
+  workspaceKey: string,
+  mode: PermissionMode,
+): Pick<ClientSettings, "workspacePermissionModes"> {
+  return {
+    workspacePermissionModes: {
+      ...settings.workspacePermissionModes,
+      [workspaceKey]: mode,
+    },
+  };
+}
 
 function readSettings(): ClientSettings {
   try {
