@@ -96,6 +96,27 @@ async function discoverSingleWorkspaceUri(
   return byWorkspaceId.size === 1 ? [...byWorkspaceId.values()][0] : undefined;
 }
 
+function matchKnownWorkspaceUris(
+  candidates: string[] | undefined,
+  knownWorkspaceUris: Set<string>,
+): string[] {
+  if (!candidates || candidates.length === 0) return [];
+  if (knownWorkspaceUris.size === 0) return [...new Set(candidates)];
+
+  const matches = new Set<string>();
+  for (const candidate of candidates) {
+    for (const workspaceUri of knownWorkspaceUris) {
+      if (
+        candidate === workspaceUri ||
+        candidate.startsWith(`${workspaceUri}/`)
+      ) {
+        matches.add(workspaceUri);
+      }
+    }
+  }
+  return [...matches];
+}
+
 /**
  * Fire-and-forget: touch each disk-only conversation on every LS so the LS
  * loads its .pb file into memory. On the *next* GetAllCascadeTrajectories call
@@ -183,6 +204,22 @@ export function registerConversationRoutes(app: Hono): void {
           .filter(Boolean)
           .map((id) => normalizeWorkspaceId(id!)),
       );
+      const knownWorkspaceUris = new Set<string>();
+
+      await Promise.allSettled(
+        instances.map(async (inst) => {
+          try {
+            const data = (await rpc.call("GetWorkspaceInfos", {}, inst)) as {
+              workspaceInfos?: { workspaceUri?: string }[];
+            };
+            for (const info of data.workspaceInfos ?? []) {
+              if (info.workspaceUri) knownWorkspaceUris.add(info.workspaceUri);
+            }
+          } catch {
+            // Conversation metadata below can still provide workspace hints.
+          }
+        }),
+      );
 
       await Promise.allSettled(
         instances.map(async (inst) => {
@@ -195,6 +232,7 @@ export function registerConversationRoutes(app: Hono): void {
               const normalizedSummary =
                 withNormalizedConversationWorkspaces(summary);
               const wsUri = getPrimaryWorkspaceUri(normalizedSummary);
+              if (wsUri) knownWorkspaceUris.add(wsUri);
 
               // Skip conversations whose workspace isn't served by any scoped
               // running LS. Antigravity 2.x exposes a hub LS with no
@@ -251,11 +289,21 @@ export function registerConversationRoutes(app: Hono): void {
       const diskOnlyIds: string[] = [];
       for (const diskId of diskIds) {
         if (!merged[diskId.id]) {
-          let injectedWorkspaces: { workspaceFolderAbsoluteUri: string }[] = [];
+          let injectedWorkspaces = matchKnownWorkspaceUris(
+            diskId.workspaceUris,
+            knownWorkspaceUris,
+          ).map((uri) => ({ workspaceFolderAbsoluteUri: uri }));
           const wsId = conversationAffinity.get(diskId.id);
-          if (wsId && wsId.startsWith("file_")) {
+          if (injectedWorkspaces.length === 0 && wsId && wsId.startsWith("file_")) {
             const uri = wsId.replace(/^file_/, "file:///").replace(/_/g, "/");
             injectedWorkspaces = [{ workspaceFolderAbsoluteUri: uri }];
+          }
+          const primaryWorkspaceUri = injectedWorkspaces[0]?.workspaceFolderAbsoluteUri;
+          if (primaryWorkspaceUri) {
+            conversationAffinity.set(
+              diskId.id,
+              uriToWorkspaceId(primaryWorkspaceUri),
+            );
           }
 
           // Always queue for warm-up, even with cached affinity.
@@ -264,7 +312,7 @@ export function registerConversationRoutes(app: Hono): void {
           diskOnlyIds.push(diskId.id);
 
           merged[diskId.id] = {
-            summary: diskId.id.slice(0, 8) + "…",
+            summary: diskId.title ?? diskId.id.slice(0, 8) + "…",
             stepCount: 0,
             status: "CASCADE_RUN_STATUS_UNLOADED",
             lastModifiedTime: diskId.mtime,

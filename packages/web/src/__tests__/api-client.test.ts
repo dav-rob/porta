@@ -60,4 +60,33 @@ describe("api client", () => {
       expect.any(Object),
     );
   });
+
+  it("posts an absolute path when adding a workspace", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          workspaceUri: "file:///Users/davidroberts/projects/new-app",
+          name: "new-app",
+        }),
+      }),
+    );
+
+    await expect(
+      api.addWorkspace("/Users/davidroberts/projects/new-app"),
+    ).resolves.toEqual({
+      workspaceUri: "file:///Users/davidroberts/projects/new-app",
+      name: "new-app",
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/workspaces",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ path: "/Users/davidroberts/projects/new-app" }),
+      }),
+    );
+  });
 });

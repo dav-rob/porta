@@ -17,7 +17,9 @@ const mockRpcForConversation = vi.fn<
   ) => Promise<unknown>
 >();
 const mockScanDiskConversations = vi.fn<
-  () => Promise<{ id: string; mtime: string }[]>
+  () => Promise<
+    { id: string; mtime: string; title?: string; workspaceUris?: string[] }[]
+  >
 >();
 
 const conversationAffinity = new Map<string, string>();
@@ -145,6 +147,33 @@ describe("GET /api/conversations", () => {
     expect(body.trajectorySummaries["c-meta"].workspaces).toEqual([
       { workspaceFolderAbsoluteUri: "file:///home/user/project" },
     ]);
+  });
+
+  it("uses disk workspace metadata for unloaded conversations", async () => {
+    const hubLS = makeInstance({ pid: 4, workspaceId: undefined });
+    mockGetInstances.mockResolvedValue([hubLS]);
+    mockRpcCall.mockResolvedValue({ trajectorySummaries: {} });
+    mockScanDiskConversations.mockResolvedValue([
+      {
+        id: "disk-cascade",
+        mtime: "2026-06-01T00:00:00.000Z",
+        title: "Please do pwd",
+        workspaceUris: ["file:///home/user/project"],
+      },
+    ]);
+
+    const res = await app().request("/api/conversations");
+    const body = await res.json();
+
+    expect(body.trajectorySummaries["disk-cascade"].workspaces).toEqual([
+      { workspaceFolderAbsoluteUri: "file:///home/user/project" },
+    ]);
+    expect(body.trajectorySummaries["disk-cascade"].summary).toBe(
+      "Please do pwd",
+    );
+    expect(conversationAffinity.get("disk-cascade")).toBe(
+      "file_home_user_project",
+    );
   });
 });
 

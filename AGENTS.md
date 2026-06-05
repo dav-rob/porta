@@ -11,6 +11,31 @@ Brief notes for future agents working on Porta.
 - Main RPC transport lives in `packages/proxy/src/rpc.ts`; LS discovery lives in
   `packages/proxy/src/discovery.ts`; conversation routing lives in
   `packages/proxy/src/routing.ts`.
+- Antigravity project/workspace RPCs currently used by Porta include
+  `GetWorkspaceInfos`, `ValidateProject`, `CreateProject`, and
+  `AddTrackedWorkspace`. Treat these as inferred private API calls, not a stable
+  documented contract.
+- Adding an existing local folder is handled by `POST /api/workspaces`, which
+  validates an absolute path, sends a `file://` URI to Antigravity, then tracks
+  the plain absolute path. Missing local `file://` workspaces are filtered out
+  of `GET /api/workspaces` so deleted folders do not poison the UI.
+- The sidebar must merge two sources: known workspaces from `/api/workspaces`
+  and conversation summaries from `/api/conversations`. A workspace can exist
+  before it has any conversations, so do not build the sidebar solely from
+  conversations.
+- Conversation summaries come primarily from Antigravity RPC
+  `GetAllCascadeTrajectories`. Some older or unloaded history may have little
+  or no workspace/title metadata until opened or warmed.
+- Local Antigravity history has been observed under
+  `~/.gemini/antigravity/conversations` as older `.pb` files and newer
+  SQLite-style `.db` files with `.db-wal` sidecars. Porta only uses this as a
+  fallback in `packages/proxy/src/metadata.ts`: it scans for likely workspace
+  `file://` hints and plausible human titles, then maps workspace hints back to
+  known workspaces to avoid treating arbitrary file links as projects.
+- There is a warm-up path in `packages/proxy/src/routes/conversations.ts` that
+  calls `GetCascadeTrajectorySteps` with a large offset for disk-only
+  conversations. This appears to encourage Antigravity to load history, but it
+  should be treated as a best-effort side effect rather than a guaranteed API.
 - Workspace permission mode is UI-controlled and workspace-scoped. `Default`
   leaves command prompts manual; `Full access` auto-approves terminal command
   prompts only. File permission prompts must stay manual.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { api } from "../api/client";
 
 /** Extract a short slug from a workspace URI: file:///home/user/work/porta → porta */
@@ -27,6 +27,8 @@ interface ConversationEntry {
 interface UseWorkspacesResult {
   workspaces: { uri: string; name: string }[];
   currentWorkspaceUri: string | undefined;
+  refreshWorkspaces: () => Promise<void>;
+  addLocalWorkspace: (path: string) => Promise<{ uri: string; name: string }>;
 }
 
 /**
@@ -41,9 +43,7 @@ export function useWorkspaces(
     [],
   );
   const wsInitialized = useRef(false);
-
-  useEffect(() => {
-    // Collect from conversations
+  const conversationWorkspaces = useMemo(() => {
     const fromConvs = new Map<string, string>();
     for (const conv of conversations) {
       const ws = conv.summary.workspaces?.[0];
@@ -55,39 +55,60 @@ export function useWorkspaces(
         uri;
       fromConvs.set(uri, name);
     }
+    return fromConvs;
+  }, [conversations]);
 
-    // Collect from LS API
-    api
-      .getWorkspaces()
-      .then((data) => {
-        const fromApi = (data.workspaceInfos ?? []).map((w) => ({
-          uri: w.workspaceUri,
-          name:
-            w.workspaceUri.replace("file://", "").split("/").pop() ??
-            w.workspaceUri,
-        }));
-        const merged = new Map<string, string>();
-        for (const w of fromApi) merged.set(w.uri, w.name);
-        for (const [uri, name] of fromConvs) {
-          if (!merged.has(uri)) merged.set(uri, name);
-        }
-        const list = Array.from(merged, ([uri, name]) => ({ uri, name }));
-        setWorkspaces(list);
-        wsInitialized.current = true;
-      })
+  const refreshWorkspaces = useCallback(async () => {
+    const data = await api.getWorkspaces();
+    const fromApi = (data.workspaceInfos ?? []).map((w) => ({
+      uri: w.workspaceUri,
+      name:
+        w.workspaceUri.replace("file://", "").split("/").pop() ??
+        w.workspaceUri,
+    }));
+    const merged = new Map<string, string>();
+    for (const w of fromApi) merged.set(w.uri, w.name);
+    for (const [uri, name] of conversationWorkspaces) {
+      if (!merged.has(uri)) merged.set(uri, name);
+    }
+    const list = Array.from(merged, ([uri, name]) => ({ uri, name }));
+    setWorkspaces(list);
+    wsInitialized.current = true;
+  }, [conversationWorkspaces]);
+
+  useEffect(() => {
+    refreshWorkspaces()
       .catch(() => {
-        const list = Array.from(fromConvs, ([uri, name]) => ({ uri, name }));
+        const list = Array.from(conversationWorkspaces, ([uri, name]) => ({
+          uri,
+          name,
+        }));
         setWorkspaces(list);
         wsInitialized.current = true;
       });
-  }, [conversations]);
+  }, [conversationWorkspaces, refreshWorkspaces]);
+
+  const addLocalWorkspace = useCallback(
+    async (path: string) => {
+      const created = await api.addWorkspace(path);
+      const workspace = { uri: created.workspaceUri, name: created.name };
+      setWorkspaces((prev) => {
+        const next = new Map(prev.map((w) => [w.uri, w.name]));
+        next.set(workspace.uri, workspace.name);
+        return Array.from(next, ([uri, name]) => ({ uri, name }));
+      });
+      await refreshWorkspaces().catch(() => undefined);
+      return workspace;
+    },
+    [refreshWorkspaces],
+  );
 
   const currentWorkspaceUri = useMemo(
     () => (projectSlug ? uriFromSlug(projectSlug, workspaces) : undefined),
     [projectSlug, workspaces],
   );
 
-  return { workspaces, currentWorkspaceUri };
+  return { workspaces, currentWorkspaceUri, refreshWorkspaces, addLocalWorkspace };
 }
 
 export { slugFromUri, uriFromSlug };

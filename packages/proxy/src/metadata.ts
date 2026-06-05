@@ -2,7 +2,7 @@
  * Shared metadata and disk-scanning utilities for the proxy.
  */
 
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -14,6 +14,13 @@ export interface ConversationWorkspaceMetadata {
     gitOriginUrl?: string;
   };
   branchName?: string;
+}
+
+export interface DiskConversationMetadata {
+  id: string;
+  mtime: string;
+  title?: string;
+  workspaceUris?: string[];
 }
 
 const CONVERSATIONS_DIR = join(
@@ -42,24 +49,130 @@ export async function getMetadata(
   return meta;
 }
 
-/** Scan disk for .pb conversation files not loaded in memory */
-export async function scanDiskConversations(): Promise<
-  { id: string; mtime: string }[]
-> {
+export function extractFileWorkspaceUrisFromBuffer(buffer: Buffer): string[] {
+  const text = buffer.toString("utf8");
+  const matches = text.match(/file:\/\/\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]+/g);
+  if (!matches) return [];
+  return [...new Set(matches)];
+}
+
+function isPlausibleDiskTitle(value: string): boolean {
+  const text = cleanDiskTitle(value);
+  if (text.length < 4 || text.length > 160) return false;
+  if (text.startsWith("@")) return false;
+  if (text.startsWith("#")) return false;
+  if (text.startsWith("<")) return false;
+  if (text.startsWith("- ")) return false;
+  if (/https?:\/\//i.test(text)) return false;
+  if (/file:\/\//i.test(text)) return false;
+  if (/[0-9a-f]{8}-[0-9a-f]{4}/i.test(text)) return false;
+  if (/^(CREATE|table|index|sqlite|[A-Za-z]?main$)/i.test(text)) return false;
+  if (/^-?table/i.test(text)) return false;
+  if (
+    /(battle_mode_infos|trajectory_metadata_blob|executor_metadata|gen_metadata|idx_steps|steps_status|steps_step_type|tablesteps|stepssteps)/i.test(text)
+  ) {
+    return false;
+  }
+  if (/^(Conversation History|Here are the conversation IDs)/i.test(text)) {
+    return false;
+  }
+  if (/^(USER Objective|System Prompt|Chat Messages|Tools)$/i.test(text)) {
+    return false;
+  }
+  if (/^\{.*\}$/.test(text)) return false;
+  if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(text)) return false;
+  if (!/\s/.test(text)) return false;
+  return /[A-Za-z]/.test(text);
+}
+
+function cleanDiskTitle(value: string): string {
+  const text = value.trim().replace(/["'`]+$/, "");
+  return text.replace(/^[A-Z](?=[A-Z][a-z])/, "");
+}
+
+export function extractDiskConversationTitleFromBuffer(
+  buffer: Buffer,
+): string | undefined {
+  const text = buffer.toString("utf8");
+  const matches = text.match(/[\x20-\x7E]{4,}/g);
+  if (!matches) return undefined;
+
+  for (const match of matches) {
+    const title = cleanDiskTitle(match);
+    if (isPlausibleDiskTitle(title)) return title;
+  }
+  return undefined;
+}
+
+function diskConversationIdForFile(file: string): string | undefined {
+  if (file.endsWith(".db-wal")) return file.slice(0, -".db-wal".length);
+  if (file.endsWith(".db")) return file.slice(0, -".db".length);
+  if (file.endsWith(".pb")) return file.slice(0, -".pb".length);
+  return undefined;
+}
+
+/** Scan disk for conversation files not loaded in memory */
+export async function scanDiskConversations(): Promise<DiskConversationMetadata[]> {
   try {
     const files = await readdir(CONVERSATIONS_DIR);
-    const results: { id: string; mtime: string }[] = [];
+    const results = new Map<string, DiskConversationMetadata>();
     for (const file of files) {
-      if (!file.endsWith(".pb")) continue;
-      const id = file.replace(".pb", "");
+      const id = diskConversationIdForFile(file);
+      if (!id) continue;
       try {
-        const s = await stat(join(CONVERSATIONS_DIR, file));
-        results.push({ id, mtime: s.mtime.toISOString() });
+        const path = join(CONVERSATIONS_DIR, file);
+        const s = await stat(path);
+        let workspaceUris: string[] | undefined;
+        let title: string | undefined;
+        try {
+          const buffer = await readFile(path);
+          workspaceUris = extractFileWorkspaceUrisFromBuffer(buffer);
+          title = extractDiskConversationTitleFromBuffer(buffer);
+        } catch {
+          workspaceUris = undefined;
+          title = undefined;
+        }
+
+        const existing = results.get(id);
+        const nextWorkspaceUris =
+          workspaceUris && workspaceUris.length > 0
+            ? [
+                ...new Set([
+                  ...(existing?.workspaceUris ?? []),
+                  ...workspaceUris,
+                ]),
+              ]
+            : existing?.workspaceUris;
+        const nextTitle = existing?.title ?? title;
+        if (
+          !existing ||
+          new Date(s.mtime).getTime() > new Date(existing.mtime).getTime()
+        ) {
+          results.set(id, {
+            id,
+            mtime: s.mtime.toISOString(),
+            ...(nextTitle ? { title: nextTitle } : {}),
+            ...(nextWorkspaceUris && nextWorkspaceUris.length > 0
+              ? { workspaceUris: nextWorkspaceUris }
+              : {}),
+          });
+        } else if (
+          (nextWorkspaceUris && nextWorkspaceUris.length > 0) ||
+          nextTitle
+        ) {
+          results.set(id, {
+            ...existing,
+            ...(nextTitle ? { title: nextTitle } : {}),
+            ...(nextWorkspaceUris && nextWorkspaceUris.length > 0
+              ? { workspaceUris: nextWorkspaceUris }
+              : {}),
+          });
+        }
       } catch {
-        results.push({ id, mtime: new Date().toISOString() });
+        results.set(id, { id, mtime: new Date().toISOString() });
       }
     }
-    return results;
+    return [...results.values()];
   } catch {
     return [];
   }
