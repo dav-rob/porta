@@ -84,7 +84,7 @@ function ChatView() {
   const { data: health } = usePolling<HealthResponse>(api.health, 30_000);
 
   // ── Hooks ──
-  const { workspaces, currentWorkspaceUri } = useWorkspaces(
+  const { workspaces, currentWorkspaceUri, addLocalWorkspace } = useWorkspaces(
     conversations,
     projectSlug,
   );
@@ -219,6 +219,20 @@ function ChatView() {
     if (isMobile()) setSidebarOpen(false);
   }, [navigate, projectSlug, setOptimisticMessages]);
 
+  const handleAddFolder = useCallback(async () => {
+    const folderPath = window.prompt("Folder path");
+    const trimmed = folderPath?.trim();
+    if (!trimmed) return;
+    try {
+      const workspace = await addLocalWorkspace(trimmed);
+      navigate(`/${slugFromUri(workspace.uri)}`);
+      setOptimisticMessages([]);
+      if (isMobile()) setSidebarOpen(false);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Failed to add folder");
+    }
+  }, [addLocalWorkspace, navigate, setOptimisticMessages]);
+
   // Header info
   const headerTitle = activeId
     ? (activeConv?.summary.summary ?? "Session")
@@ -264,10 +278,16 @@ function ChatView() {
     >
       <Sidebar
         conversations={conversations}
+        workspaces={workspaces}
         activeId={activeId}
         onSelect={(id) => {
           setOptimisticMessages([]);
           navigate(chatUrl(id));
+          if (isMobile()) setSidebarOpen(false);
+        }}
+        onWorkspaceSelect={(workspaceUri) => {
+          setOptimisticMessages([]);
+          navigate(`/${slugFromUri(workspaceUri)}`);
           if (isMobile()) setSidebarOpen(false);
         }}
         onNew={handleNew}
@@ -400,6 +420,7 @@ function ChatView() {
                       const slug = slugFromUri(uri);
                       navigate(`/${slug}`);
                     }}
+                    onAddFolder={handleAddFolder}
                   />
                 ) : (
                   <div className="chat-empty-project">

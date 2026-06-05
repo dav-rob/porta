@@ -72,6 +72,12 @@ export const api = {
       workspaceInfos?: { workspaceUri: string; gitRootUri?: string }[];
     }>("/api/workspaces"),
 
+  addWorkspace: (path: string) =>
+    request<{ workspaceUri: string; name: string }>("/api/workspaces", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    }),
+
   startConversation: (workspaceUri?: string, fileAccessGranted = false) =>
     request<{ cascadeId: string }>("/api/conversations", {
       method: "POST",

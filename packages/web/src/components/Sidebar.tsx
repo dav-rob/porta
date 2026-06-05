@@ -13,8 +13,10 @@ import {
 
 interface Props {
   conversations: ConversationEntry[];
+  workspaces?: { uri: string; name: string }[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  onWorkspaceSelect?: (uri: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
   onSettings: () => void;
@@ -25,7 +27,9 @@ interface Props {
 }
 
 interface WorkspaceGroup {
+  key: string;
   name: string;
+  uri?: string;
   conversations: ConversationEntry[];
   hasRunning: boolean;
 }
@@ -104,8 +108,10 @@ interface SidebarAction {
 
 export function Sidebar({
   conversations,
+  workspaces = [],
   activeId,
   onSelect,
+  onWorkspaceSelect,
   onNew,
   onDelete,
   onSettings,
@@ -135,7 +141,13 @@ export function Sidebar({
   const closeMenu = useCallback(() => setMenuOpen(null), []);
 
   const groups = useMemo<WorkspaceGroup[]>(() => {
+    const workspaceByName = new Map<string, { uri: string; name: string }>();
     const map = new Map<string, ConversationEntry[]>();
+
+    for (const workspace of workspaces) {
+      workspaceByName.set(workspace.name, workspace);
+      map.set(workspace.name, []);
+    }
 
     for (const conv of conversations) {
       const name = extractWorkspaceName(conv);
@@ -157,8 +169,11 @@ export function Sidebar({
             new Date(a.summary.lastModifiedTime).getTime()
           );
         });
+        const workspace = workspaceByName.get(name);
         return {
+          key: workspace?.uri ?? name,
           name,
+          uri: workspace?.uri,
           conversations: convs,
           hasRunning: convs.some(
             (c) => c.summary.status === "CASCADE_RUN_STATUS_RUNNING",
@@ -170,19 +185,25 @@ export function Sidebar({
         const bHasActive = b.conversations.some((c) => !isArchived(c));
         if (aHasActive !== bHasActive) return aHasActive ? -1 : 1;
         if (a.hasRunning !== b.hasRunning) return a.hasRunning ? -1 : 1;
-        const aTime = Math.max(
-          ...a.conversations.map((c) =>
-            new Date(c.summary.lastModifiedTime).getTime(),
-          ),
-        );
-        const bTime = Math.max(
-          ...b.conversations.map((c) =>
-            new Date(c.summary.lastModifiedTime).getTime(),
-          ),
-        );
+        const aTime =
+          a.conversations.length > 0
+            ? Math.max(
+                ...a.conversations.map((c) =>
+                  new Date(c.summary.lastModifiedTime).getTime(),
+                ),
+              )
+            : 0;
+        const bTime =
+          b.conversations.length > 0
+            ? Math.max(
+                ...b.conversations.map((c) =>
+                  new Date(c.summary.lastModifiedTime).getTime(),
+                ),
+              )
+            : 0;
         return bTime - aTime;
       });
-  }, [conversations]);
+  }, [conversations, workspaces]);
 
   const toggleGroup = (name: string) => {
     setCollapsed((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -404,10 +425,16 @@ export function Sidebar({
             const hiddenCount = totalCount - PREVIEW_COUNT;
 
             return (
-              <div key={group.name} className="workspace-group">
+              <div key={group.key} className="workspace-group">
                 <button
                   className="workspace-group-header"
-                  onClick={() => toggleGroup(group.name)}
+                  onClick={() => {
+                    if (totalCount === 0 && group.uri && onWorkspaceSelect) {
+                      onWorkspaceSelect(group.uri);
+                      return;
+                    }
+                    toggleGroup(group.name);
+                  }}
                 >
                   <span
                     className={`workspace-group-chevron ${isGroupCollapsed ? "collapsed" : ""}`}
@@ -420,7 +447,13 @@ export function Sidebar({
 
                 {!isGroupCollapsed && (
                   <div className="workspace-group-items">
-                    {visibleItems.map(renderItem)}
+                    {visibleItems.length > 0 ? (
+                      visibleItems.map(renderItem)
+                    ) : (
+                      <div className="sidebar-empty-workspace">
+                        No conversations yet
+                      </div>
+                    )}
 
                     {hiddenCount > 0 && (
                       <button

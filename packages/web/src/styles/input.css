@@ -346,7 +346,16 @@
 }
 
 .model-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: 1;
+}
+
+.model-option-separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--border-default);
 }
 
 .model-option-meta {

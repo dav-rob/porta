@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { IconFolder } from "./Icons";
+import { IconFolder, IconPlus } from "./Icons";
 
 interface Props {
   workspaces: { uri: string; name: string }[];
   selected: string;
   onSelect: (uri: string) => void;
+  onAddFolder?: () => void;
 }
 
-export function WorkspaceSelector({ workspaces, selected, onSelect }: Props) {
+export function WorkspaceSelector({
+  workspaces,
+  selected,
+  onSelect,
+  onAddFolder,
+}: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -58,6 +64,22 @@ export function WorkspaceSelector({ workspaces, selected, onSelect }: Props) {
               </button>
             );
           })}
+          {onAddFolder && (
+            <>
+              <div className="model-option-separator" />
+              <button
+                className="model-option"
+                onClick={() => {
+                  setOpen(false);
+                  onAddFolder();
+                }}
+              >
+                <span className="model-option-label">
+                  <IconPlus size={12} /> Add folder
+                </span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

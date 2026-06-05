@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   extractConversationWorkspaces,
+  extractDiskConversationTitleFromBuffer,
+  extractFileWorkspaceUrisFromBuffer,
   getMetadata,
   getPrimaryWorkspaceUri,
   withNormalizedConversationWorkspaces,
@@ -38,6 +40,25 @@ describe("getMetadata", () => {
 });
 
 describe("conversation workspace metadata helpers", () => {
+  it("extracts a plausible title from disk conversation bytes", () => {
+    const buffer = Buffer.from(
+      "tabletrajectory_metadata_blob\0@main\0Please do pwd\0Please do pwd\"\0# Conversation History",
+    );
+
+    expect(extractDiskConversationTitleFromBuffer(buffer)).toBe("Please do pwd");
+  });
+
+  it("extracts file workspace URIs from disk conversation bytes", () => {
+    const buffer = Buffer.from(
+      "prefix file:///Users/davidroberts/projects/quick-scripts/porta suffix " +
+        "file:///Users/davidroberts/projects/quick-scripts/porta",
+    );
+
+    expect(extractFileWorkspaceUrisFromBuffer(buffer)).toEqual([
+      "file:///Users/davidroberts/projects/quick-scripts/porta",
+    ]);
+  });
+
   it("extracts top-level workspace metadata", () => {
     const summary = {
       workspaces: [
