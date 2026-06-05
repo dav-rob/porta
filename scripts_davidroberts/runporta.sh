@@ -24,11 +24,11 @@ _porta_start() {
         echo "Porta is already running (PID: $pid)."
     else
         echo "Starting Porta..."
-        (cd "$PORTA_DIR" && PORTA_AUTO_APPROVE_COMMANDS=1 nohup pnpm dev:tailscale > /dev/null 2>&1 &)
+        (cd "$PORTA_DIR" && nohup pnpm dev:tailscale > /dev/null 2>&1 &)
     fi
 
     echo "  Phone/iPad: http://${tailscale_ip}:5173"
-    echo "  Command auto-approve: enabled"
+    echo "  Command permissions: controlled in the web UI"
     echo "  Logs: ${PORTA_DIR}/logs/"
 }
 
