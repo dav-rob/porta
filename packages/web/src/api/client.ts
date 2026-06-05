@@ -69,7 +69,11 @@ export const api = {
 
   getWorkspaces: () =>
     request<{
-      workspaceInfos?: { workspaceUri: string; gitRootUri?: string }[];
+      workspaceInfos?: {
+        workspaceUri: string;
+        gitRootUri?: string;
+        source?: "tracked" | "conversation";
+      }[];
     }>("/api/workspaces"),
 
   addWorkspace: (path: string) =>

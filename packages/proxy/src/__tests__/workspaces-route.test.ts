@@ -83,6 +83,7 @@ describe("GET /api/workspaces", () => {
       {
         workspaceUri: "file:///C:/Users/deepk/porta",
         gitRootUri: "file:///C:/Users/deepk/porta",
+        source: "conversation",
       },
     ]);
   });
@@ -123,6 +124,7 @@ describe("GET /api/workspaces", () => {
 
     expect(body.workspaceInfos).toHaveLength(1);
     expect(body.workspaceInfos[0].workspaceUri).toBe("file:///home/user/porta");
+    expect(body.workspaceInfos[0].source).toBe("tracked");
   });
 
   it("filters local workspaces whose folders no longer exist", async () => {
@@ -159,6 +161,7 @@ describe("GET /api/workspaces", () => {
     expect(body.workspaceInfos).toEqual([
       {
         workspaceUri: "file:///Users/davidroberts/projects/active-project",
+        source: "tracked",
       },
     ]);
   });

@@ -27,7 +27,11 @@ export function registerWorkspaceRoutes(app: Hono): void {
       const instances = await discovery.getInstances();
       const workspaceMap = new Map<
         string,
-        { workspaceUri: string; gitRootUri?: string }
+        {
+          workspaceUri: string;
+          gitRootUri?: string;
+          source?: "tracked" | "conversation";
+        }
       >();
       let homeDirPath = "";
       let homeDirUri = "";
@@ -44,7 +48,10 @@ export function registerWorkspaceRoutes(app: Hono): void {
             if (data.homeDirUri) homeDirUri = data.homeDirUri;
             for (const info of data.workspaceInfos ?? []) {
               if (!(await localFileWorkspaceExists(info.workspaceUri))) continue;
-              workspaceMap.set(info.workspaceUri, info);
+              workspaceMap.set(info.workspaceUri, {
+                ...info,
+                source: "tracked",
+              });
             }
           } catch {
             // Skip unreachable instances
@@ -65,6 +72,7 @@ export function registerWorkspaceRoutes(app: Hono): void {
                 if (!(await localFileWorkspaceExists(workspaceUri))) continue;
                 workspaceMap.set(workspaceUri, {
                   workspaceUri,
+                  source: "conversation",
                   ...(workspace.gitRootAbsoluteUri
                     ? { gitRootUri: workspace.gitRootAbsoluteUri }
                     : {}),

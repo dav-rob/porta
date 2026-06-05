@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { api } from "../api/client";
 
+const EXPLICIT_WORKSPACES_KEY = "porta:explicitWorkspaces";
+
 /** Extract a short slug from a workspace URI: file:///home/user/work/porta → porta */
 function slugFromUri(uri: string): string {
   return uri.replace("file://", "").split("/").pop() ?? uri;
@@ -18,6 +20,27 @@ export interface WorkspaceEntry {
   uri: string;
   name: string;
   showWhenEmpty: boolean;
+}
+
+function loadExplicitWorkspaceUris(): Set<string> {
+  try {
+    const value = JSON.parse(
+      localStorage.getItem(EXPLICIT_WORKSPACES_KEY) ?? "[]",
+    );
+    return new Set(
+      Array.isArray(value)
+        ? value.filter((uri): uri is string => typeof uri === "string")
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function saveExplicitWorkspaceUris(uris: Set<string>): void {
+  try {
+    localStorage.setItem(EXPLICIT_WORKSPACES_KEY, JSON.stringify([...uris]));
+  } catch {}
 }
 
 interface ConversationEntry {
@@ -46,7 +69,15 @@ export function useWorkspaces(
   projectSlug: string | undefined,
 ): UseWorkspacesResult {
   const [workspaces, setWorkspaces] = useState<WorkspaceEntry[]>([]);
+  const [explicitWorkspaceUris, setExplicitWorkspaceUris] = useState(
+    loadExplicitWorkspaceUris,
+  );
+  const explicitWorkspaceUrisRef = useRef(explicitWorkspaceUris);
   const wsInitialized = useRef(false);
+
+  useEffect(() => {
+    explicitWorkspaceUrisRef.current = explicitWorkspaceUris;
+  }, [explicitWorkspaceUris]);
   const conversationWorkspaces = useMemo(() => {
     const fromConvs = new Map<string, string>();
     for (const conv of conversations) {
@@ -69,7 +100,7 @@ export function useWorkspaces(
       name:
         w.workspaceUri.replace("file://", "").split("/").pop() ??
         w.workspaceUri,
-      showWhenEmpty: true,
+      showWhenEmpty: explicitWorkspaceUrisRef.current.has(w.workspaceUri),
     }));
     const merged = new Map<string, WorkspaceEntry>();
     for (const w of fromApi) merged.set(w.uri, w);
@@ -104,15 +135,21 @@ export function useWorkspaces(
         name: created.name,
         showWhenEmpty: true,
       };
+      setExplicitWorkspaceUris((prev) => {
+        const next = new Set(prev);
+        next.add(workspace.uri);
+        explicitWorkspaceUrisRef.current = next;
+        saveExplicitWorkspaceUris(next);
+        return next;
+      });
       setWorkspaces((prev) => {
         const next = new Map(prev.map((w) => [w.uri, w]));
         next.set(workspace.uri, workspace);
         return Array.from(next.values());
       });
-      await refreshWorkspaces().catch(() => undefined);
       return workspace;
     },
-    [refreshWorkspaces],
+    [],
   );
 
   const currentWorkspaceUri = useMemo(

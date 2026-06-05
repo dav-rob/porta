@@ -27,8 +27,8 @@ Brief notes for future agents working on Porta.
   and conversation summaries from `/api/conversations`. A workspace can exist
   before it has any conversations, so do not build the sidebar solely from
   conversations.
-- Keep the sidebar clean: API/user-added workspaces may be shown with zero
-  conversations, but disk-recovered/conversation-only workspaces should only
+- Keep the sidebar clean: workspaces explicitly added through Porta may be
+  shown with zero conversations, but tracked/recovered workspaces should only
   appear when they actually have conversations.
 - Conversation summaries come primarily from Antigravity RPC
   `GetAllCascadeTrajectories`. Some older or unloaded history may have little
