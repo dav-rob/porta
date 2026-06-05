@@ -51,10 +51,17 @@ export const api = {
     ),
 
   /** Fetch steps with optional limit. Returns { steps, offset, stepCount? }. */
-  getSteps: (cascadeId: string, offset = 0, limit?: number, tail?: number) => {
+  getSteps: (
+    cascadeId: string,
+    offset = 0,
+    limit?: number,
+    tail?: number,
+    permissionMode?: import("../types").PermissionMode,
+  ) => {
     const params = new URLSearchParams({ offset: String(offset) });
     if (limit !== undefined) params.set("limit", String(limit));
     if (tail !== undefined) params.set("tail", String(tail));
+    if (permissionMode) params.set("permissionMode", permissionMode);
     return request<import("../types").StepsPageResponse>(
       `/api/conversations/${cascadeId}/steps?${params}`,
     );

@@ -67,12 +67,15 @@ describe("useStepsStream", () => {
       .spyOn(api, "getConversation")
       .mockRejectedValue(new Error("getConversation should not be called"));
 
-    renderHook(() => useStepsStream("cascade-1", 0, undefined, false));
+    renderHook(() => useStepsStream("cascade-1", 0, undefined, false, "full"));
 
     await waitFor(() => {
       expect(getSteps).toHaveBeenCalledTimes(1);
       expect(MockWebSocket.instances).toHaveLength(1);
     });
+
+    expect(MockWebSocket.instances[0].url).toContain("permissionMode=full");
+    expect(getSteps.mock.calls[0]?.[4]).toBe("full");
 
     await waitFor(() => {
       expect(MockWebSocket.instances[0].sent).toContain(
@@ -103,6 +106,7 @@ describe("useStepsStream", () => {
       expect(MockWebSocket.instances).toHaveLength(2);
     });
 
+    expect(getSteps.mock.calls[1]?.[4]).toBe("full");
     expect(getConversation).not.toHaveBeenCalled();
   });
 });

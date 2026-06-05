@@ -44,6 +44,7 @@ export function useStepsStream(
   totalStepCount?: number,
   onIdleTransition?: () => void,
   isConversationRunning = false,
+  permissionMode?: import("../types").PermissionMode,
 ): UseStepsStreamResult {
   const [steps, setSteps] = useState<TrajectoryStep[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,7 @@ export function useStepsStream(
         startOffset,
         undefined,
         isUnknown ? PAGE_SIZE : undefined,
+        permissionMode,
       );
       console.debug(
         `[useStepsStream] initialFetch result: mounted=${mountedRef.current} gen=${gen}==${genRef.current} steps=${(result.steps ?? []).length} offset=${result.offset}`,
@@ -121,7 +123,7 @@ export function useStepsStream(
       setLoading(false);
       return null;
     }
-  }, [cascadeId]);
+  }, [cascadeId, permissionMode]);
 
   // ── WS: connect for deltas ──
   const connectWs = useCallback(
@@ -135,13 +137,16 @@ export function useStepsStream(
       }
 
       const apiBase = import.meta.env.VITE_API_BASE ?? "";
+      const params = new URLSearchParams();
+      if (permissionMode) params.set("permissionMode", permissionMode);
+      const suffix = params.toString() ? `?${params}` : "";
       let url: string;
       if (apiBase) {
         const wsBase = apiBase.replace(/^http/, "ws");
-        url = `${wsBase}/api/conversations/${cascadeId}/ws`;
+        url = `${wsBase}/api/conversations/${cascadeId}/ws${suffix}`;
       } else {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        url = `${protocol}//${window.location.host}/api/conversations/${cascadeId}/ws`;
+        url = `${protocol}//${window.location.host}/api/conversations/${cascadeId}/ws${suffix}`;
       }
       const gen = genRef.current;
 
@@ -253,7 +258,7 @@ export function useStepsStream(
         // WS not available — no real-time updates
       }
     },
-    [cascadeId, clearReconnectTimer],
+    [cascadeId, clearReconnectTimer, permissionMode],
   );
 
   // ── Lifecycle: fetch + connect ──
@@ -320,7 +325,13 @@ export function useStepsStream(
       const fetchOffset = Math.max(0, end - PAGE_SIZE);
       const limit = end - fetchOffset;
 
-      const result = await api.getSteps(cascadeId, fetchOffset, limit);
+      const result = await api.getSteps(
+        cascadeId,
+        fetchOffset,
+        limit,
+        undefined,
+        permissionMode,
+      );
       if (!mountedRef.current || gen !== genRef.current) return 0;
 
       const olderSteps = result.steps ?? [];
@@ -346,7 +357,7 @@ export function useStepsStream(
     } finally {
       if (mountedRef.current) setLoadingOlder(false);
     }
-  }, [cascadeId, loadingOlder]);
+  }, [cascadeId, loadingOlder, permissionMode]);
 
   const syncLatestSteps = useCallback(
     async (reconnectMode: "always" | "if-running") => {
@@ -362,6 +373,7 @@ export function useStepsStream(
           startOffset,
           undefined,
           isUnknown ? PAGE_SIZE : undefined,
+          permissionMode,
         );
         if (!mountedRef.current || gen !== genRef.current) return;
 
@@ -425,7 +437,7 @@ export function useStepsStream(
         console.error("Soft refresh failed:", err);
       }
     },
-    [cascadeId, connectWs],
+    [cascadeId, connectWs, permissionMode],
   );
 
   // ── Soft refresh: merge new steps without clearing existing messages ──

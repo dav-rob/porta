@@ -42,4 +42,22 @@ describe("api client", () => {
       "API returned non-JSON for /api/health: <!doctype html><html><body>Not JSON</body></html>",
     );
   });
+
+  it("sends permission mode on step fetches", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ steps: [], offset: 0 }),
+      }),
+    );
+
+    await api.getSteps("cascade-1", 0, undefined, 20, "full");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/conversations/cascade-1/steps?offset=0&tail=20&permissionMode=full",
+      expect.any(Object),
+    );
+  });
 });
