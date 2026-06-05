@@ -25,6 +25,7 @@ describe("Sidebar", () => {
           {
             uri: "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
             name: "test-porta-2",
+            showWhenEmpty: true,
           },
         ]}
         conversations={[
@@ -65,6 +66,7 @@ describe("Sidebar", () => {
           {
             uri: "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
             name: "test-porta-2",
+            showWhenEmpty: true,
           },
         ]}
         onWorkspaceSelect={onWorkspaceSelect}
@@ -77,5 +79,23 @@ describe("Sidebar", () => {
     expect(onWorkspaceSelect).toHaveBeenCalledWith(
       "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
     );
+  });
+
+  it("hides recovered workspaces that do not have conversations", () => {
+    render(
+      <Sidebar
+        {...defaultProps}
+        workspaces={[
+          {
+            uri: "file:///Users/davidroberts/projects/Tix-Appeal/extract-ticket-data",
+            name: "extract-ticket-data",
+            showWhenEmpty: false,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText("extract-ticket-data")).not.toBeInTheDocument();
+    expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
   });
 });

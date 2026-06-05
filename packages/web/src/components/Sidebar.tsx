@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import type { ConversationEntry } from "../hooks/useConversations";
+import type { WorkspaceEntry } from "../hooks/useWorkspaces";
 import { api } from "../api/client";
 import {
   IconPlus,
@@ -13,7 +14,7 @@ import {
 
 interface Props {
   conversations: ConversationEntry[];
-  workspaces?: { uri: string; name: string }[];
+  workspaces?: WorkspaceEntry[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onWorkspaceSelect?: (uri: string) => void;
@@ -141,12 +142,14 @@ export function Sidebar({
   const closeMenu = useCallback(() => setMenuOpen(null), []);
 
   const groups = useMemo<WorkspaceGroup[]>(() => {
-    const workspaceByName = new Map<string, { uri: string; name: string }>();
+    const workspaceByName = new Map<string, WorkspaceEntry>();
     const map = new Map<string, ConversationEntry[]>();
 
     for (const workspace of workspaces) {
       workspaceByName.set(workspace.name, workspace);
-      map.set(workspace.name, []);
+      if (workspace.showWhenEmpty) {
+        map.set(workspace.name, []);
+      }
     }
 
     for (const conv of conversations) {
