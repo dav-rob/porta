@@ -117,6 +117,39 @@ function matchKnownWorkspaceUris(
   return [...matches];
 }
 
+async function findInstanceForWorkspace(
+  instances: LSInstance[],
+  workspaceUri: string,
+): Promise<LSInstance | undefined> {
+  const wsId = normalizeWorkspaceId(uriToWorkspaceId(workspaceUri));
+  const scopedMatch = instances.find(
+    (i) => i.workspaceId && normalizeWorkspaceId(i.workspaceId) === wsId,
+  );
+  if (scopedMatch) return scopedMatch;
+
+  const unscopedInstances = instances.filter((i) => !i.workspaceId);
+  if (unscopedInstances.length === 1) return unscopedInstances[0];
+
+  for (const inst of instances) {
+    try {
+      const data = (await rpc.call("GetWorkspaceInfos", {}, inst)) as {
+        workspaceInfos?: { workspaceUri?: string }[];
+      };
+      if (
+        (data.workspaceInfos ?? []).some(
+          (info) => info.workspaceUri === workspaceUri,
+        )
+      ) {
+        return inst;
+      }
+    } catch {
+      // Keep looking; unreachable instances should not block routing.
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Fire-and-forget: touch each disk-only conversation on every LS so the LS
  * loads its .pb file into memory. On the *next* GetAllCascadeTrajectories call
@@ -485,15 +518,7 @@ export function registerConversationRoutes(app: Hono): void {
       // Resolve which LS instance to use based on workspace URI
       let targetInstance: LSInstance | undefined;
       if (workspaceUri) {
-        const wsId = normalizeWorkspaceId(uriToWorkspaceId(workspaceUri));
-        targetInstance =
-          instances.find(
-            (i) => i.workspaceId && normalizeWorkspaceId(i.workspaceId) === wsId,
-          ) ?? undefined;
-        targetInstance ??=
-          instances.filter((i) => !i.workspaceId).length === 1
-            ? instances.find((i) => !i.workspaceId)
-            : undefined;
+        targetInstance = await findInstanceForWorkspace(instances, workspaceUri);
 
         // Workspace was explicitly requested but no LS owns it — fail clearly
         if (!targetInstance) {
@@ -545,8 +570,15 @@ export function registerConversationRoutes(app: Hono): void {
       } else if (newId && targetInstance?.workspaceId) {
         conversationAffinity.set(newId, targetInstance.workspaceId);
       }
-      if (newId && targetInstance && !targetInstance.workspaceId) {
-        conversationInstanceAffinity.set(newId, targetInstance);
+      if (newId && targetInstance) {
+        const targetMatchesWorkspace =
+          workspaceUri &&
+          targetInstance.workspaceId &&
+          normalizeWorkspaceId(targetInstance.workspaceId) ===
+            normalizeWorkspaceId(uriToWorkspaceId(workspaceUri));
+        if (!targetMatchesWorkspace) {
+          conversationInstanceAffinity.set(newId, targetInstance);
+        }
       }
 
       // Signal WS connections for this conversation to enter ACTIVE state

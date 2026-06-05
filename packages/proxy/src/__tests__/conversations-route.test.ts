@@ -375,4 +375,45 @@ describe("POST /api/conversations", () => {
       hubLS,
     );
   });
+
+  it("starts a conversation on an LS that lists the requested workspace", async () => {
+    const scopedLS = makeInstance({
+      pid: 7,
+      workspaceId: "file_home_user_other-project",
+    });
+    mockGetInstances.mockResolvedValue([scopedLS]);
+    mockRpcCall.mockImplementation(async (method) => {
+      if (method === "GetWorkspaceInfos") {
+        return {
+          workspaceInfos: [
+            { workspaceUri: "file:///home/user/requested-project" },
+          ],
+        };
+      }
+      if (method === "StartCascade") return { cascadeId: "new-cascade" };
+      return {};
+    });
+
+    const res = await app().request("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceFolderAbsoluteUri: "file:///home/user/requested-project",
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(mockRpcCall).toHaveBeenCalledWith(
+      "StartCascade",
+      expect.objectContaining({
+        workspaceFolderAbsoluteUri: "file:///home/user/requested-project",
+        workspaceUris: ["file:///home/user/requested-project"],
+      }),
+      scopedLS,
+    );
+    expect(conversationAffinity.get("new-cascade")).toBe(
+      "file_home_user_requested-project",
+    );
+    expect(conversationInstanceAffinity.get("new-cascade")).toBe(scopedLS);
+  });
 });
