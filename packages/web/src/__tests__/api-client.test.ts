@@ -62,22 +62,22 @@ describe("api client", () => {
   });
 
   it("posts an absolute path when adding a workspace", async () => {
+    const workspacePath = "/home/user/projects/new-app";
+    const workspaceUri = "file:///home/user/projects/new-app";
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
         headers: new Headers({ "content-type": "application/json" }),
         json: async () => ({
-          workspaceUri: "file:///Users/davidroberts/projects/new-app",
+          workspaceUri,
           name: "new-app",
         }),
       }),
     );
 
-    await expect(
-      api.addWorkspace("/Users/davidroberts/projects/new-app"),
-    ).resolves.toEqual({
-      workspaceUri: "file:///Users/davidroberts/projects/new-app",
+    await expect(api.addWorkspace(workspacePath)).resolves.toEqual({
+      workspaceUri,
       name: "new-app",
     });
 
@@ -85,7 +85,7 @@ describe("api client", () => {
       "/api/workspaces",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ path: "/Users/davidroberts/projects/new-app" }),
+        body: JSON.stringify({ path: workspacePath }),
       }),
     );
   });

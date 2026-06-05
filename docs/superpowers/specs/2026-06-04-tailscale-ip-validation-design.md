@@ -10,7 +10,7 @@ Tailscale interfaces utilize IPs in the CGNAT address space `100.64.0.0/10` (fro
 
 ## Proposed Changes
 
-### [packages/proxy/src/exposure.ts](file:///Users/davidroberts/projects/quick-scripts/porta/packages/proxy/src/exposure.ts)
+### `packages/proxy/src/exposure.ts`
 
 * Modify `assertSupportedListenHost` to include `isTailscaleIp(normalized)` in the main validation whitelist alongside loopback and private LAN checks.
 * Remove the conditional environment check `env.PORTA_TAILSCALE === "1"`.
@@ -19,7 +19,7 @@ Tailscale interfaces utilize IPs in the CGNAT address space `100.64.0.0/10` (fro
   "Public internet exposure is unsupported. Set PORTA_HOST to a loopback address, an explicit private LAN IP, or a Tailscale IP."
   ```
 
-### [packages/proxy/src/__tests__/exposure.test.ts](file:///Users/davidroberts/projects/quick-scripts/porta/packages/proxy/src/__tests__/exposure.test.ts)
+### `packages/proxy/src/__tests__/exposure.test.ts`
 
 * Add test case `accepts Tailscale IPs`:
   * Validates `100.64.0.1`, `100.127.255.254`, etc. are accepted without throwing.

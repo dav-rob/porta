@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { pathToFileURL } from "node:url";
 import {
   extractConversationWorkspaces,
   extractDiskConversationTitleFromBuffer,
@@ -49,14 +50,14 @@ describe("conversation workspace metadata helpers", () => {
   });
 
   it("extracts file workspace URIs from disk conversation bytes", () => {
+    const workspaceUri = pathToFileURL(
+      "/home/user/projects/quick-scripts/porta",
+    ).href;
     const buffer = Buffer.from(
-      "prefix file:///Users/davidroberts/projects/quick-scripts/porta suffix " +
-        "file:///Users/davidroberts/projects/quick-scripts/porta",
+      `prefix ${workspaceUri} suffix ${workspaceUri}`,
     );
 
-    expect(extractFileWorkspaceUrisFromBuffer(buffer)).toEqual([
-      "file:///Users/davidroberts/projects/quick-scripts/porta",
-    ]);
+    expect(extractFileWorkspaceUrisFromBuffer(buffer)).toEqual([workspaceUri]);
   });
 
   it("extracts top-level workspace metadata", () => {

@@ -18,12 +18,13 @@ const defaultProps = {
 
 describe("Sidebar", () => {
   it("shows conversations under matching workspace entries", () => {
+    const workspaceUri = "file:///home/user/projects/quick-scripts/test-porta-2";
     render(
       <Sidebar
         {...defaultProps}
         workspaces={[
           {
-            uri: "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
+            uri: workspaceUri,
             name: "test-porta-2",
           },
         ]}
@@ -39,8 +40,7 @@ describe("Sidebar", () => {
               stepCount: 2,
               workspaces: [
                 {
-                  workspaceFolderAbsoluteUri:
-                    "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
+                  workspaceFolderAbsoluteUri: workspaceUri,
                   repository: {},
                 },
               ],
@@ -58,12 +58,13 @@ describe("Sidebar", () => {
 
   it("shows workspaces that do not have conversations yet", async () => {
     const onWorkspaceSelect = vi.fn();
+    const workspaceUri = "file:///home/user/projects/quick-scripts/test-porta-2";
     render(
       <Sidebar
         {...defaultProps}
         workspaces={[
           {
-            uri: "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
+            uri: workspaceUri,
             name: "test-porta-2",
           },
         ]}
@@ -74,8 +75,6 @@ describe("Sidebar", () => {
     await userEvent.click(screen.getByText("test-porta-2"));
 
     expect(screen.getByText("No conversations yet")).toBeInTheDocument();
-    expect(onWorkspaceSelect).toHaveBeenCalledWith(
-      "file:///Users/davidroberts/projects/quick-scripts/test-porta-2",
-    );
+    expect(onWorkspaceSelect).toHaveBeenCalledWith(workspaceUri);
   });
 });
