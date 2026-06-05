@@ -276,6 +276,15 @@ Porta has three main parts:
    steps: messages, tool calls, command permission requests, file permission
    requests, and run status updates.
 
+   This local API is private rather than a documented public Google SDK. Porta
+   discovers it by finding Antigravity's local language server process or daemon
+   metadata, reading the dynamic port and CSRF token, then calling local
+   Connect/RPC-style endpoints such as
+   `/exa.language_server_pb.LanguageServerService/GetCascadeTrajectorySteps`.
+   The endpoint names and payloads are based on observed Antigravity behavior
+   and Codeium/Windsurf language-server conventions, so future Antigravity
+   updates may require adapter changes in the proxy.
+
 The live chat view works through a WebSocket. The web app opens a socket to
 Porta for the current conversation. Porta keeps reading new steps from
 Antigravity and pushes those steps to the browser, so the UI updates without a

@@ -1,4 +1,7 @@
 #!/usr/bin/env zsh
+#
+# Repo copy of the personal launcher. Copy this file to:
+#   $HOME/runporta.sh
 
 PORTA_DIR=~/projects/quick-scripts/porta
 
