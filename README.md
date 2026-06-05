@@ -17,12 +17,12 @@ SSH, start Porta with `runporta`, then use the Porta web UI from the phone.
 - [Optional Cloudflare remote access](docs/cloudflare.md)
 
 <p align="center">
-  <img src="docs/full-access-before.jpg" alt="Porta on iPhone with Full Access selected before command approval succeeds" width="300">
+  <img src="docs/default-manual-approval.jpg" alt="Porta on iPhone with Default selected and a command waiting for approval" width="300">
   <img src="docs/full-access-after.jpg" alt="Porta on iPhone with Full Access selected after command approval succeeds" width="300">
 </p>
 
 <p align="center">
-  <em>The red Full access control in the composer is the workspace permission dropdown.</em>
+  <em>Default keeps command approval manual. Full access auto-approves terminal command prompts for the workspace.</em>
 </p>
 
 ## Quick Start
