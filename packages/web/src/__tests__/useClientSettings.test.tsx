@@ -78,4 +78,60 @@ describe("workspace permission settings", () => {
       permissionModeForWorkspace(result.current.settings, "file:///repo/b"),
     ).toBe("default");
   });
+
+  it("defaults legacy stored settings without workspace permission modes", () => {
+    localStorage.setItem(
+      "porta:settings",
+      JSON.stringify({
+        defaultModel: null,
+        defaultPlannerType: "conversational",
+      }),
+    );
+
+    const { result } = renderHook(() => useClientSettings());
+
+    expect(
+      permissionModeForWorkspace(result.current.settings, "file:///repo/a"),
+    ).toBe("default");
+  });
+
+  it("defaults stored null workspace permission modes", () => {
+    localStorage.setItem(
+      "porta:settings",
+      JSON.stringify({
+        defaultModel: null,
+        defaultPlannerType: "conversational",
+        workspacePermissionModes: null,
+      }),
+    );
+
+    const { result } = renderHook(() => useClientSettings());
+
+    expect(
+      permissionModeForWorkspace(result.current.settings, "file:///repo/a"),
+    ).toBe("default");
+  });
+
+  it("filters invalid stored workspace permission modes", () => {
+    localStorage.setItem(
+      "porta:settings",
+      JSON.stringify({
+        defaultModel: null,
+        defaultPlannerType: "conversational",
+        workspacePermissionModes: {
+          "file:///repo/a": "dangerous",
+          "file:///repo/b": "full",
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useClientSettings());
+
+    expect(
+      permissionModeForWorkspace(result.current.settings, "file:///repo/a"),
+    ).toBe("default");
+    expect(
+      permissionModeForWorkspace(result.current.settings, "file:///repo/b"),
+    ).toBe("full");
+  });
 });

@@ -38,11 +38,41 @@ export function workspacePermissionPatch(
   };
 }
 
+function isPermissionMode(value: unknown): value is PermissionMode {
+  return value === "default" || value === "full";
+}
+
+function normalizeWorkspacePermissionModes(
+  value: unknown,
+): ClientSettings["workspacePermissionModes"] {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, PermissionMode] =>
+      isPermissionMode(entry[1]),
+    ),
+  );
+}
+
 function readSettings(): ClientSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<ClientSettings>;
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      workspacePermissionModes: normalizeWorkspacePermissionModes(
+        parsed.workspacePermissionModes,
+      ),
+    };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
