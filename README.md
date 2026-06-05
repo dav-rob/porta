@@ -9,6 +9,8 @@ Access your local Antigravity sessions from your phone, tablet, or any remote br
 
 Porta is a two-part system: a **proxy** that bridges your local Antigravity Language Server to the network, and a **web UI** (installable PWA) that gives you a mobile-friendly chat interface.
 
+For a simple under-the-hood overview, see [Architecture](#architecture).
+
 <p align="center">
   <img src="docs/screenshot.png" alt="Porta — desktop and mobile" width="720">
 </p>
@@ -254,3 +256,62 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 ## License
 
 [MIT](LICENSE)
+
+## Architecture
+
+Porta has three main parts:
+
+1. **Web app**
+   The React UI you use in the browser. It shows the chat list, chat view,
+   command cards, file permission cards, input box, settings, and workspace
+   permission selector.
+
+2. **Porta proxy**
+   A local TypeScript server between the browser and Antigravity. The browser
+   talks to Porta over HTTP and WebSocket. Porta talks to Antigravity's local
+   language server / RPC API.
+
+3. **Antigravity language server**
+   The local service that owns the agent session. It produces conversation
+   steps: messages, tool calls, command permission requests, file permission
+   requests, and run status updates.
+
+The live chat view works through a WebSocket. The web app opens a socket to
+Porta for the current conversation. Porta keeps reading new steps from
+Antigravity and pushes those steps to the browser, so the UI updates without a
+manual refresh.
+
+### Full Access mode
+
+The workspace permission selector stores one setting per workspace in the
+browser:
+
+- `Default`: terminal command prompts stay manual.
+- `Full access`: terminal command prompts are auto-approved for that workspace.
+
+When the chat view fetches or streams steps, the web app sends the current mode
+to the proxy:
+
+```text
+/api/conversations/:id/steps?permissionMode=full
+/api/conversations/:id/ws?permissionMode=full
+```
+
+or:
+
+```text
+permissionMode=default
+```
+
+The proxy then applies the mode while handling incoming Antigravity steps:
+
+- If the mode is `default`, it does nothing and command permission cards stay
+  manual.
+- If the mode is `full`, it watches for waiting terminal command permission
+  requests and sends Antigravity the same approval response the user would send
+  by pressing Approve.
+- File permission requests are not auto-approved by this path; they stay manual.
+
+Full Access therefore does not change Antigravity globally. It is Porta
+approving terminal command permission steps on the user's behalf for the active
+workspace when the UI mode is set to `full`.
