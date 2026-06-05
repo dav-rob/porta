@@ -135,6 +135,11 @@
   box-shadow: 0 0 0 2px rgb(var(--c-accent) / 0.15);
 }
 
+.settings-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .settings-select option {
   background: var(--bg-tertiary);
   color: var(--text-primary);

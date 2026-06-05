@@ -19,10 +19,14 @@ import { usePolling } from "./hooks/usePolling";
 import { useWorkspaces, slugFromUri } from "./hooks/useWorkspaces";
 import { useDraftText } from "./hooks/useDraftText";
 import { useChatActions } from "./hooks/useChatActions";
-import { useClientSettings } from "./hooks/useClientSettings";
+import {
+  permissionModeForWorkspace,
+  useClientSettings,
+  workspacePermissionPatch,
+} from "./hooks/useClientSettings";
 import { api } from "./api/client";
 import { isUnconfirmedOptimisticMessage } from "./utils/optimisticMessages";
-import type { HealthResponse, MediaAttachment } from "./types";
+import type { HealthResponse, MediaAttachment, PermissionMode } from "./types";
 import type { PlannerType } from "./components/ChatInput";
 
 export default function App() {
@@ -86,10 +90,25 @@ function ChatView() {
   );
   const { draftText, handleDraftChange } = useDraftText(activeId);
   const { settings, updateSettings } = useClientSettings();
+  const workspacePermissionKey = currentWorkspaceUri ?? projectSlug ?? null;
+  const permissionMode = permissionModeForWorkspace(
+    settings,
+    workspacePermissionKey,
+  );
 
   const activeConv = conversations.find((c) => c.id === activeId);
   const isRunning = activeConv?.summary.status === "CASCADE_RUN_STATUS_RUNNING";
   const connected = !!health && health.languageServers.length > 0;
+
+  const handlePermissionModeChange = useCallback(
+    (mode: PermissionMode) => {
+      if (!workspacePermissionKey) return;
+      updateSettings(
+        workspacePermissionPatch(settings, workspacePermissionKey, mode),
+      );
+    },
+    [settings, updateSettings, workspacePermissionKey],
+  );
 
   const {
     optimisticMessages,
@@ -278,6 +297,9 @@ function ChatView() {
           <SettingsPanel
             settings={settings}
             onUpdate={updateSettings}
+            workspacePermissionKey={workspacePermissionKey}
+            workspacePermissionMode={permissionMode}
+            onWorkspacePermissionModeChange={handlePermissionModeChange}
             onBack={() => navigate(`/${projectSlug ?? "unknown"}`)}
           />
         ) : activeId ? (
@@ -396,6 +418,8 @@ function ChatView() {
             onDraftChange={handleDraftChange}
             defaultModel={settings.defaultModel}
             defaultPlannerType={settings.defaultPlannerType}
+            permissionMode={permissionMode}
+            onPermissionModeChange={handlePermissionModeChange}
           />
         )}
       </div>

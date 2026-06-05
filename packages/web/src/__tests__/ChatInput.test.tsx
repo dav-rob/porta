@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ChatInput } from "../components/ChatInput";
 
@@ -25,6 +26,8 @@ describe("ChatInput", () => {
     onDraftChange: mockOnDraftChange,
     isRunning: false,
     draft: "",
+    permissionMode: "default" as const,
+    onPermissionModeChange: vi.fn(),
   };
 
   it("renders correctly", () => {
@@ -39,6 +42,22 @@ describe("ChatInput", () => {
     const textarea = screen.getByPlaceholderText("Send a message...");
     fireEvent.change(textarea, { target: { value: "hello" } });
     expect(mockOnDraftChange).toHaveBeenCalledWith("hello");
+  });
+
+  it("shows and updates the permission mode selector", async () => {
+    const onPermissionModeChange = vi.fn();
+    render(
+      <ChatInput
+        {...defaultProps}
+        permissionMode="default"
+        onPermissionModeChange={onPermissionModeChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByTitle("Select permission mode"));
+    await userEvent.click(screen.getByText("Full access"));
+
+    expect(onPermissionModeChange).toHaveBeenCalledWith("full");
   });
 
   it("blocks oversized svg attachments before sending", async () => {

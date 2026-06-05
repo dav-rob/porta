@@ -344,6 +344,16 @@
   margin-left: 8px;
 }
 
+.permission-selector .model-selector-btn {
+  width: 128px;
+}
+
+.permission-selector.full .model-selector-btn {
+  color: rgb(var(--c-error));
+  border-color: rgb(var(--c-error) / 0.35);
+  background: rgb(var(--c-error) / 0.08);
+}
+
 .model-quota {
   font-weight: 600;
 }

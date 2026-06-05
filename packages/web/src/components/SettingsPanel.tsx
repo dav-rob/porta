@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { IconChevronLeft, IconCheck } from "./Icons";
 import { api } from "../api/client";
-import type { ClientSettings } from "../types";
+import type { ClientSettings, PermissionMode } from "../types";
 import type { PlannerType } from "./ChatInput";
 
 interface ModelConfig {
@@ -25,10 +25,20 @@ interface ModelConfig {
 interface Props {
   settings: ClientSettings;
   onUpdate: (patch: Partial<ClientSettings>) => void;
+  workspacePermissionKey: string | null;
+  workspacePermissionMode: PermissionMode;
+  onWorkspacePermissionModeChange: (mode: PermissionMode) => void;
   onBack: () => void;
 }
 
-export function SettingsPanel({ settings, onUpdate, onBack }: Props) {
+export function SettingsPanel({
+  settings,
+  onUpdate,
+  workspacePermissionKey,
+  workspacePermissionMode,
+  onWorkspacePermissionModeChange,
+  onBack,
+}: Props) {
   const [models, setModels] = useState<ModelConfig[]>([]);
   const [fetchError, setFetchError] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -78,8 +88,9 @@ export function SettingsPanel({ settings, onUpdate, onBack }: Props) {
 
   const handleReset = useCallback(() => {
     onUpdate({ defaultModel: null, defaultPlannerType: "conversational" });
+    onWorkspacePermissionModeChange("default");
     flashSaved();
-  }, [onUpdate, flashSaved]);
+  }, [onUpdate, onWorkspacePermissionModeChange, flashSaved]);
 
   return (
     <div className="settings-panel">
@@ -147,6 +158,36 @@ export function SettingsPanel({ settings, onUpdate, onBack }: Props) {
             >
               <option value="conversational">Fast</option>
               <option value="planning">Plan</option>
+            </select>
+          </div>
+        </div>
+
+        {/* ── Permissions ── */}
+        <div className="settings-section">
+          <h2 className="settings-section-title">Permissions</h2>
+          <div className="settings-row">
+            <div className="settings-row-info">
+              <span className="settings-row-label">
+                Workspace Permission Mode
+              </span>
+              <span className="settings-row-desc">
+                Full access auto-approves terminal commands in this workspace
+                only. File permission prompts remain manual.
+              </span>
+            </div>
+            <select
+              className="settings-select"
+              value={workspacePermissionMode}
+              onChange={(e) => {
+                onWorkspacePermissionModeChange(
+                  e.target.value as PermissionMode,
+                );
+                flashSaved();
+              }}
+              disabled={!workspacePermissionKey}
+            >
+              <option value="default">Default permissions</option>
+              <option value="full">Full access</option>
             </select>
           </div>
         </div>

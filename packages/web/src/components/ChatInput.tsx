@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ModelSelector } from "./ModelSelector";
 import { IconPaperclip } from "./Icons";
-import type { MediaAttachment } from "../types";
+import type { MediaAttachment, PermissionMode } from "../types";
 import { prepareAttachments } from "../utils/imageAttachments";
 import { DEFAULT_MODEL } from "../constants";
 const ALLOWED_TYPES = [
@@ -30,6 +30,8 @@ interface Props {
   defaultModel?: string | null;
   /** Default planner type from client settings. */
   defaultPlannerType?: PlannerType;
+  permissionMode: PermissionMode;
+  onPermissionModeChange: (mode: PermissionMode) => void;
 }
 
 interface AttachmentPreview {
@@ -44,6 +46,23 @@ const PLANNER_OPTIONS: { value: PlannerType; label: string; desc: string }[] = [
     desc: "Direct, single-step responses",
   },
   { value: "planning", label: "Plan", desc: "Multi-step structured approach" },
+];
+
+const PERMISSION_OPTIONS: {
+  value: PermissionMode;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    value: "default",
+    label: "Default",
+    desc: "Ask before running commands",
+  },
+  {
+    value: "full",
+    label: "Full access",
+    desc: "Auto-approve terminal commands",
+  },
 ];
 
 function PlannerTypeSelector({
@@ -101,6 +120,62 @@ function PlannerTypeSelector({
   );
 }
 
+function PermissionModeSelector({
+  permissionMode,
+  onSelect,
+}: {
+  permissionMode: PermissionMode;
+  onSelect: (mode: PermissionMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const activeLabel =
+    PERMISSION_OPTIONS.find((o) => o.value === permissionMode)?.label ??
+    "Default";
+
+  return (
+    <div className={`model-selector permission-selector ${permissionMode}`} ref={ref}>
+      <button
+        className="model-selector-btn"
+        onClick={() => setOpen((v) => !v)}
+        title="Select permission mode"
+      >
+        <span className="model-selector-label">{activeLabel}</span>
+        <span className="model-selector-caret">▾</span>
+      </button>
+      {open && (
+        <div className="model-selector-dropdown">
+          {PERMISSION_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              className={`model-option ${permissionMode === opt.value ? "active" : ""}`}
+              onClick={() => {
+                onSelect(opt.value);
+                setOpen(false);
+              }}
+            >
+              <span className="model-option-label">{opt.label}</span>
+              <span className="model-option-meta">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChatInput({
   onSend,
   onStop,
@@ -110,6 +185,8 @@ export function ChatInput({
   onDraftChange,
   defaultModel,
   defaultPlannerType,
+  permissionMode,
+  onPermissionModeChange,
 }: Props) {
   const effectiveDefault = defaultModel ?? DEFAULT_MODEL;
   const [model, setModel] = useState<string | null>(effectiveDefault);
@@ -376,6 +453,10 @@ export function ChatInput({
           </div>
 
           <div className="chat-input-bottom-right">
+            <PermissionModeSelector
+              permissionMode={permissionMode}
+              onSelect={onPermissionModeChange}
+            />
             <ModelSelector selectedModel={model} onSelect={setModel} />
             <PlannerTypeSelector
               plannerType={plannerType}
