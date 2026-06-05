@@ -44,6 +44,7 @@ Brief notes for future agents working on Porta.
   `$HOME/runporta.sh` launcher.
 - `scripts_davidroberts/launch_bg_app.zsh` is the `.zshrc` helper for
   `runantigravity`, `runcodex`, and `runporta` aliases.
+- **Cross-Platform Testing**: When writing tests involving absolute paths and `file://` URIs, use generic paths (e.g. `/home/user/project`) wrapped with `pathToFileURL("...").href` to ensure tests run smoothly on Windows CI where drive letters are implicitly added. Use `path.includes()` rather than `path.endsWith()` to account for backslashes in Windows file paths.
 
 ---
 
