@@ -4,6 +4,7 @@
  * Currently supports:
  *   - Default model selection
  *   - Default planner type (Fast / Plan)
+ *   - Workspace permission mode
  *
  * Settings are stored client-side in localStorage.
  */

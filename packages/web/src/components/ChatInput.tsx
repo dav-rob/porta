@@ -144,6 +144,10 @@ function PermissionModeSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
+
   const activeLabel =
     PERMISSION_OPTIONS.find((o) => o.value === permissionMode)?.label ??
     "Default";
