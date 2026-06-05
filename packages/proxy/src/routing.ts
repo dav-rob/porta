@@ -148,6 +148,31 @@ export async function discoverOwnerInstance(
       return wsOwners[0].inst;
     }
 
+    const workspaceInfoOwners: typeof candidates = [];
+    await Promise.allSettled(
+      candidates.map(async (candidate) => {
+        try {
+          const data = await rpc.call<{
+            workspaceInfos?: { workspaceUri?: string }[];
+          }>("GetWorkspaceInfos", {}, candidate.inst);
+          if (
+            (data.workspaceInfos ?? []).some(
+              (info) => info.workspaceUri === wsUri,
+            )
+          ) {
+            workspaceInfoOwners.push(candidate);
+          }
+        } catch {
+          // Keep ownership conservative if workspace info cannot be queried.
+        }
+      }),
+    );
+    if (workspaceInfoOwners.length > 0) {
+      workspaceInfoOwners.sort((a, b) => b.stepCount - a.stepCount);
+      conversationInstanceAffinity.set(cascadeId, workspaceInfoOwners[0].inst);
+      return workspaceInfoOwners[0].inst;
+    }
+
     // Antigravity 2.x can expose a standalone hub LS without a workspaceId.
     // When exactly one unscoped LS reports this workspace-backed conversation,
     // that LS is the only concrete owner signal available and is safe for both

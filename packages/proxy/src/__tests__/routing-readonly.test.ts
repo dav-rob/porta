@@ -366,6 +366,50 @@ describe("resolveAndCall write-path safety (mutation misrouting prevention)", ()
     ).resolves.toMatchObject({ data: { ok: true }, instance: hubLS });
   });
 
+  it("allows mutations through an LS that lists the conversation workspace", async () => {
+    const scopedLS = makeInstance({
+      pid: 74,
+      workspaceId: "file_home_user_other-project",
+    });
+    mockGetInstances.mockResolvedValue([scopedLS]);
+
+    mockRpcCall.mockImplementation(async (method: string) => {
+      if (method === "GetAllCascadeTrajectories") {
+        return {
+          trajectorySummaries: {
+            "cascade-workspace-info": {
+              stepCount: 2,
+              status: "CASCADE_RUN_STATUS_IDLE",
+              workspaces: [
+                { workspaceFolderAbsoluteUri: "file:///home/user/project" },
+              ],
+            },
+          },
+        };
+      }
+      if (method === "GetWorkspaceInfos") {
+        return {
+          workspaceInfos: [{ workspaceUri: "file:///home/user/project" }],
+        };
+      }
+      return { ok: true };
+    });
+
+    await expect(
+      resolveAndCall(
+        "SendUserCascadeMessage",
+        "cascade-workspace-info",
+        { cascadeId: "cascade-workspace-info", items: [] },
+        undefined,
+        false,
+      ),
+    ).resolves.toMatchObject({ data: { ok: true }, instance: scopedLS });
+
+    expect(conversationInstanceAffinity.get("cascade-workspace-info")).toBe(
+      scopedLS,
+    );
+  });
+
   it("uses cached unscoped hub ownership for follow-up writes after StartCascade", async () => {
     const hubLS = makeInstance({ pid: 73, workspaceId: undefined });
     mockGetInstances.mockResolvedValue([hubLS]);
