@@ -19,6 +19,10 @@ Brief notes for future agents working on Porta.
   validates an absolute path, sends a `file://` URI to Antigravity, then tracks
   the plain absolute path. Missing local `file://` workspaces are filtered out
   of `GET /api/workspaces` so deleted folders do not poison the UI.
+- `POST /api/conversations` may also auto-register an explicitly requested
+  local `file://` workspace if no current LS owns it yet, but only when the
+  local path exists and is a directory. If registration or rediscovery does not
+  produce an owning LS, the route still returns the clear 503 error.
 - The sidebar must merge two sources: known workspaces from `/api/workspaces`
   and conversation summaries from `/api/conversations`. A workspace can exist
   before it has any conversations, so do not build the sidebar solely from

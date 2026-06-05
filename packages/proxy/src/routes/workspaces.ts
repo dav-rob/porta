@@ -4,12 +4,12 @@
 
 import type { Hono } from "hono";
 import { access } from "node:fs/promises";
-import { isAbsolute, basename } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { isAbsolute } from "node:path";
+import { fileURLToPath } from "node:url";
 import { discovery, rpc } from "../routing.js";
 import { handleRPCError } from "../errors.js";
 import { extractConversationWorkspaces } from "../metadata.js";
-import { RPCError } from "../rpc.js";
+import { registerExistingLocalWorkspace } from "../workspace-projects.js";
 
 async function localFileWorkspaceExists(workspaceUri: string): Promise<boolean> {
   if (!workspaceUri.startsWith("file://")) return true;
@@ -98,52 +98,28 @@ export function registerWorkspaceRoutes(app: Hono): void {
         return c.json({ error: "Path must be absolute" }, 400);
       }
 
-      const workspaceUri = pathToFileURL(folderPath).href;
-      const name =
-        typeof body.name === "string" && body.name.trim()
-          ? body.name.trim()
-          : basename(folderPath);
       const inst = await discovery.getInstance();
       if (!inst) {
         return c.json({ error: "No Language Server instance found" }, 503);
       }
 
-      await rpc.call("ValidateProject", { location: workspaceUri }, inst);
-      try {
-        await rpc.call(
-          "CreateProject",
-          {
-            project: {
-              name,
-              projectResources: {
-                resources: [
-                  {
-                    gitFolder: {
-                      folderUri: workspaceUri,
-                      allowWrite: true,
-                    },
-                  },
-                ],
-              },
-            },
-          },
-          inst,
-        );
-      } catch (err) {
-        if (!(err instanceof RPCError) || err.code !== "already_exists") {
-          throw err;
-        }
-      }
-      await rpc.call(
-        "AddTrackedWorkspace",
-        {
-          workspace: folderPath,
-          isPassiveWorkspace: true,
-        },
+      const name =
+        typeof body.name === "string" && body.name.trim()
+          ? body.name.trim()
+          : undefined;
+      const workspace = await registerExistingLocalWorkspace(
+        folderPath,
         inst,
+        name,
       );
+      if (!workspace) {
+        return c.json({ error: "Path must be an existing directory" }, 400);
+      }
 
-      return c.json({ workspaceUri, name }, 201);
+      return c.json(
+        { workspaceUri: workspace.workspaceUri, name: workspace.name },
+        201,
+      );
     } catch (err) {
       return handleRPCError(c, err);
     }

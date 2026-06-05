@@ -9,6 +9,9 @@ const mockRpcCall = vi.fn<
   (method: string, body: unknown, inst?: LSInstance) => Promise<unknown>
 >();
 const mockAccess = vi.fn<(path: string) => Promise<void>>();
+const mockStat = vi.fn<
+  (path: string) => Promise<{ isDirectory: () => boolean }>
+>();
 
 vi.mock("../routing.js", () => ({
   discovery: { getInstance: mockGetInstance, getInstances: mockGetInstances },
@@ -16,6 +19,7 @@ vi.mock("../routing.js", () => ({
 }));
 vi.mock("node:fs/promises", () => ({
   access: mockAccess,
+  stat: mockStat,
 }));
 
 const { registerWorkspaceRoutes } = await import("../routes/workspaces.js");
@@ -40,6 +44,7 @@ describe("GET /api/workspaces", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAccess.mockResolvedValue(undefined);
+    mockStat.mockResolvedValue({ isDirectory: () => true });
   });
 
   it("falls back to conversation metadata when GetWorkspaceInfos has no workspaceInfos", async () => {
@@ -163,6 +168,7 @@ describe("POST /api/workspaces", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAccess.mockResolvedValue(undefined);
+    mockStat.mockResolvedValue({ isDirectory: () => true });
   });
 
   it("rejects non-absolute folder paths", async () => {

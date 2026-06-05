@@ -36,6 +36,11 @@ import {
   maybeAutoApproveCommands,
   permissionModeFromQuery,
 } from "../auto-approve.js";
+import {
+  localDirectoryExists,
+  registerExistingLocalWorkspace,
+  workspaceUriToLocalPath,
+} from "../workspace-projects.js";
 
 // ── Background warm-up for disk-only conversations ──
 
@@ -115,6 +120,21 @@ function matchKnownWorkspaceUris(
     }
   }
   return [...matches];
+}
+
+function findInstanceForWorkspace(
+  instances: LSInstance[],
+  workspaceUri: string,
+): LSInstance | undefined {
+  const wsId = normalizeWorkspaceId(uriToWorkspaceId(workspaceUri));
+  return (
+    instances.find(
+      (i) => i.workspaceId && normalizeWorkspaceId(i.workspaceId) === wsId,
+    ) ??
+    (instances.filter((i) => !i.workspaceId).length === 1
+      ? instances.find((i) => !i.workspaceId)
+      : undefined)
+  );
 }
 
 /**
@@ -480,20 +500,35 @@ export function registerConversationRoutes(app: Hono): void {
         typeof body.workspaceFolderAbsoluteUri === "string"
           ? body.workspaceFolderAbsoluteUri
           : bodyWorkspaceUris[0];
-      const instances = await discovery.getInstances();
+      let instances = await discovery.getInstances();
 
       // Resolve which LS instance to use based on workspace URI
       let targetInstance: LSInstance | undefined;
       if (workspaceUri) {
-        const wsId = normalizeWorkspaceId(uriToWorkspaceId(workspaceUri));
-        targetInstance =
-          instances.find(
-            (i) => i.workspaceId && normalizeWorkspaceId(i.workspaceId) === wsId,
-          ) ?? undefined;
-        targetInstance ??=
-          instances.filter((i) => !i.workspaceId).length === 1
-            ? instances.find((i) => !i.workspaceId)
-            : undefined;
+        targetInstance = findInstanceForWorkspace(instances, workspaceUri);
+
+        if (!targetInstance) {
+          const folderPath = workspaceUriToLocalPath(workspaceUri);
+          if (folderPath && instances[0]) {
+            if (!(await localDirectoryExists(folderPath))) {
+              return c.json(
+                {
+                  error: "Project folder no longer exists.",
+                  detail: folderPath,
+                },
+                404,
+              );
+            }
+            const registered = await registerExistingLocalWorkspace(
+              folderPath,
+              instances[0],
+            );
+            if (registered) {
+              instances = await discovery.getInstances();
+              targetInstance = findInstanceForWorkspace(instances, workspaceUri);
+            }
+          }
+        }
 
         // Workspace was explicitly requested but no LS owns it — fail clearly
         if (!targetInstance) {

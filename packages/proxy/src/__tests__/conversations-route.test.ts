@@ -21,6 +21,9 @@ const mockScanDiskConversations = vi.fn<
     { id: string; mtime: string; title?: string; workspaceUris?: string[] }[]
   >
 >();
+const mockStat = vi.fn<
+  (path: string) => Promise<{ isDirectory: () => boolean }>
+>();
 
 const conversationAffinity = new Map<string, string>();
 const conversationInstanceAffinity = new Map<string, LSInstance>();
@@ -45,6 +48,13 @@ vi.mock("../metadata.js", async (importOriginal) => {
   return {
     ...actual,
     scanDiskConversations: mockScanDiskConversations,
+  };
+});
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    stat: mockStat,
   };
 });
 
@@ -277,6 +287,7 @@ describe("POST /api/conversations", () => {
     conversationInstanceAffinity.clear();
     clearAutoApprovedCommandsForTests();
     mockScanDiskConversations.mockResolvedValue([]);
+    mockStat.mockResolvedValue({ isDirectory: () => true });
   });
 
   it("sets the Antigravity 2.x required trajectory source and caches unscoped hub ownership", async () => {
@@ -373,6 +384,95 @@ describe("POST /api/conversations", () => {
         workspaceUris: ["file:///home/user/project"],
       }),
       hubLS,
+    );
+  });
+
+  it("tracks an existing local workspace and retries when no LS owns it yet", async () => {
+    const existingLS = makeInstance({
+      pid: 7,
+      workspaceId: "file_home_user_existing",
+    });
+    const newWorkspaceLS = makeInstance({
+      pid: 8,
+      workspaceId: "file_home_user_new-project",
+    });
+    mockGetInstances
+      .mockResolvedValueOnce([existingLS])
+      .mockResolvedValueOnce([newWorkspaceLS]);
+    mockRpcCall.mockImplementation(async (method) => {
+      if (method === "StartCascade") return { cascadeId: "new-cascade" };
+      return {};
+    });
+
+    const res = await app().request("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceFolderAbsoluteUri: "file:///home/user/new-project",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.cascadeId).toBe("new-cascade");
+    expect(mockStat).toHaveBeenCalledWith("/home/user/new-project");
+    expect(mockRpcCall).toHaveBeenNthCalledWith(
+      1,
+      "ValidateProject",
+      { location: "file:///home/user/new-project" },
+      existingLS,
+    );
+    expect(mockRpcCall).toHaveBeenNthCalledWith(
+      2,
+      "CreateProject",
+      expect.objectContaining({
+        project: expect.objectContaining({ name: "new-project" }),
+      }),
+      existingLS,
+    );
+    expect(mockRpcCall).toHaveBeenNthCalledWith(
+      3,
+      "AddTrackedWorkspace",
+      {
+        workspace: "/home/user/new-project",
+        isPassiveWorkspace: true,
+      },
+      existingLS,
+    );
+    expect(mockRpcCall).toHaveBeenLastCalledWith(
+      "StartCascade",
+      expect.objectContaining({
+        workspaceFolderAbsoluteUri: "file:///home/user/new-project",
+        workspaceUris: ["file:///home/user/new-project"],
+      }),
+      newWorkspaceLS,
+    );
+  });
+
+  it("does not auto-create a missing local workspace on send", async () => {
+    const existingLS = makeInstance({
+      pid: 9,
+      workspaceId: "file_home_user_existing",
+    });
+    mockGetInstances.mockResolvedValue([existingLS]);
+    mockStat.mockRejectedValue(new Error("missing"));
+
+    const res = await app().request("/api/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workspaceFolderAbsoluteUri: "file:///home/user/missing-project",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(body.error).toBe("Project folder no longer exists.");
+    expect(body.detail).toBe("/home/user/missing-project");
+    expect(mockRpcCall).not.toHaveBeenCalledWith(
+      "CreateProject",
+      expect.anything(),
+      expect.anything(),
     );
   });
 });
