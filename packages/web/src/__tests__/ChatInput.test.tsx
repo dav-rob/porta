@@ -60,6 +60,24 @@ describe("ChatInput", () => {
     expect(onPermissionModeChange).toHaveBeenCalledWith("full");
   });
 
+  it("disables the permission mode selector when permission settings are unresolved", async () => {
+    const onPermissionModeChange = vi.fn();
+    render(
+      <ChatInput
+        {...defaultProps}
+        permissionMode="default"
+        permissionModeDisabled
+        onPermissionModeChange={onPermissionModeChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByTitle("Select permission mode"));
+
+    expect(screen.getByTitle("Select permission mode")).toBeDisabled();
+    expect(screen.queryByText("Full access")).not.toBeInTheDocument();
+    expect(onPermissionModeChange).not.toHaveBeenCalled();
+  });
+
   it("blocks oversized svg attachments before sending", async () => {
     const { container } = render(<ChatInput {...defaultProps} />);
     const fileInput = container.querySelector('input[type="file"]');

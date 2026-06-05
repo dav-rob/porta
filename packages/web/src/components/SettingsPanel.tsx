@@ -87,10 +87,13 @@ export function SettingsPanel({
   );
 
   const handleReset = useCallback(() => {
-    onUpdate({ defaultModel: null, defaultPlannerType: "conversational" });
-    onWorkspacePermissionModeChange("default");
+    onUpdate({
+      defaultModel: null,
+      defaultPlannerType: "conversational",
+      workspacePermissionModes: {},
+    });
     flashSaved();
-  }, [onUpdate, onWorkspacePermissionModeChange, flashSaved]);
+  }, [onUpdate, flashSaved]);
 
   return (
     <div className="settings-panel">

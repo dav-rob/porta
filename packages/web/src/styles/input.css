@@ -288,6 +288,17 @@
   border-color: var(--border-focus);
 }
 
+.model-selector-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.model-selector-btn:disabled:hover {
+  color: var(--text-secondary);
+  background: rgb(var(--c-lift) / 0.04);
+  border-color: var(--border-default);
+}
+
 .model-selector-caret {
   font-size: 10px;
   opacity: 0.6;
@@ -356,6 +367,34 @@
 
 .model-quota {
   font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .chat-input-bottom {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .chat-input-bottom-left {
+    flex-shrink: 0;
+  }
+
+  .chat-input-bottom-right {
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .chat-input-bottom-right .model-selector .model-selector-btn {
+    width: 96px;
+    padding: 6px 8px 6px 10px;
+  }
+
+  .chat-input-bottom-right .permission-selector .model-selector-btn {
+    width: 104px;
+  }
 }
 
 /* ── Connection status bar ── */

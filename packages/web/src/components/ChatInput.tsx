@@ -31,6 +31,7 @@ interface Props {
   /** Default planner type from client settings. */
   defaultPlannerType?: PlannerType;
   permissionMode: PermissionMode;
+  permissionModeDisabled?: boolean;
   onPermissionModeChange: (mode: PermissionMode) => void;
 }
 
@@ -122,9 +123,11 @@ function PlannerTypeSelector({
 
 function PermissionModeSelector({
   permissionMode,
+  disabled,
   onSelect,
 }: {
   permissionMode: PermissionMode;
+  disabled?: boolean;
   onSelect: (mode: PermissionMode) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -150,6 +153,7 @@ function PermissionModeSelector({
       <button
         className="model-selector-btn"
         onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
         title="Select permission mode"
       >
         <span className="model-selector-label">{activeLabel}</span>
@@ -186,6 +190,7 @@ export function ChatInput({
   defaultModel,
   defaultPlannerType,
   permissionMode,
+  permissionModeDisabled,
   onPermissionModeChange,
 }: Props) {
   const effectiveDefault = defaultModel ?? DEFAULT_MODEL;
@@ -455,6 +460,7 @@ export function ChatInput({
           <div className="chat-input-bottom-right">
             <PermissionModeSelector
               permissionMode={permissionMode}
+              disabled={permissionModeDisabled}
               onSelect={onPermissionModeChange}
             />
             <ModelSelector selectedModel={model} onSelect={setModel} />

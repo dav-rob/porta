@@ -90,11 +90,12 @@ function ChatView() {
   );
   const { draftText, handleDraftChange } = useDraftText(activeId);
   const { settings, updateSettings } = useClientSettings();
-  const workspacePermissionKey = currentWorkspaceUri ?? projectSlug ?? null;
+  const workspacePermissionKey = currentWorkspaceUri ?? null;
   const permissionMode = permissionModeForWorkspace(
     settings,
     workspacePermissionKey,
   );
+  const permissionModeDisabled = !workspacePermissionKey;
 
   const activeConv = conversations.find((c) => c.id === activeId);
   const isRunning = activeConv?.summary.status === "CASCADE_RUN_STATUS_RUNNING";
@@ -419,6 +420,7 @@ function ChatView() {
             defaultModel={settings.defaultModel}
             defaultPlannerType={settings.defaultPlannerType}
             permissionMode={permissionMode}
+            permissionModeDisabled={permissionModeDisabled}
             onPermissionModeChange={handlePermissionModeChange}
           />
         )}
