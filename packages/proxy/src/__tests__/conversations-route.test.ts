@@ -1,10 +1,20 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LSInstance } from "../discovery.js";
+import { clearAutoApprovedCommandsForTests } from "../auto-approve.js";
 
 const mockGetInstances = vi.fn<() => Promise<LSInstance[]>>();
 const mockRpcCall = vi.fn<
   (method: string, body: unknown, inst: LSInstance) => Promise<unknown>
+>();
+const mockRpcForConversation = vi.fn<
+  (
+    method: string,
+    cascadeId: string,
+    body?: Record<string, unknown>,
+    pinnedInstance?: LSInstance,
+    readOnly?: boolean,
+  ) => Promise<unknown>
 >();
 const mockScanDiskConversations = vi.fn<
   () => Promise<{ id: string; mtime: string }[]>
@@ -22,6 +32,7 @@ vi.mock("../routing.js", async (importOriginal) => {
       getInstance: async () => (await mockGetInstances())[0] ?? null,
     },
     rpc: { call: mockRpcCall },
+    rpcForConversation: mockRpcForConversation,
     conversationAffinity,
     conversationInstanceAffinity,
   };
@@ -56,8 +67,11 @@ function app() {
 describe("GET /api/conversations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     conversationAffinity.clear();
     conversationInstanceAffinity.clear();
+    clearAutoApprovedCommandsForTests();
+    mockRpcForConversation.mockReset();
     mockScanDiskConversations.mockResolvedValue([]);
   });
 
@@ -134,11 +148,105 @@ describe("GET /api/conversations", () => {
   });
 });
 
+describe("GET /api/conversations/:id/steps", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    conversationAffinity.clear();
+    conversationInstanceAffinity.clear();
+    clearAutoApprovedCommandsForTests();
+    mockRpcForConversation.mockReset();
+    mockScanDiskConversations.mockResolvedValue([]);
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("uses env fallback for command approval when permission mode is omitted", async () => {
+    vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
+    mockRpcForConversation.mockImplementation(async (method) => {
+      if (method === "GetCascadeTrajectorySteps") {
+        return {
+          steps: [
+            {
+              status: "CORTEX_STEP_STATUS_WAITING",
+              runCommand: {
+                proposedCommandLine: "echo route-env-fallback",
+              },
+              metadata: {
+                sourceTrajectoryStepInfo: {
+                  trajectoryId: "trajectory-1",
+                  stepIndex: 7,
+                },
+              },
+            },
+          ],
+        };
+      }
+      return {};
+    });
+
+    const res = await app().request(
+      "/api/conversations/cascade-steps-env/steps?limit=1",
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockRpcForConversation).toHaveBeenCalledWith(
+      "HandleCascadeUserInteraction",
+      "cascade-steps-env",
+      expect.objectContaining({
+        cascadeId: "cascade-steps-env",
+        interaction: expect.objectContaining({
+          trajectoryId: "trajectory-1",
+          stepIndex: 7,
+        }),
+      }),
+    );
+  });
+
+  it("does not use env fallback for command approval with explicit default mode", async () => {
+    vi.stubEnv("PORTA_AUTO_APPROVE_COMMANDS", "1");
+    mockRpcForConversation.mockImplementation(async (method) => {
+      if (method === "GetCascadeTrajectorySteps") {
+        return {
+          steps: [
+            {
+              status: "CORTEX_STEP_STATUS_WAITING",
+              runCommand: {
+                proposedCommandLine: "echo route-explicit-default",
+              },
+              metadata: {
+                sourceTrajectoryStepInfo: {
+                  trajectoryId: "trajectory-1",
+                  stepIndex: 8,
+                },
+              },
+            },
+          ],
+        };
+      }
+      return {};
+    });
+
+    const res = await app().request(
+      "/api/conversations/cascade-steps-default/steps?limit=1&permissionMode=default",
+    );
+
+    expect(res.status).toBe(200);
+    expect(
+      mockRpcForConversation.mock.calls.some(
+        ([method]) => method === "HandleCascadeUserInteraction",
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("POST /api/conversations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     conversationAffinity.clear();
     conversationInstanceAffinity.clear();
+    clearAutoApprovedCommandsForTests();
     mockScanDiskConversations.mockResolvedValue([]);
   });
 

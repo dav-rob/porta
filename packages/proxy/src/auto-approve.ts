@@ -24,6 +24,14 @@ function shouldAutoApproveCommands(mode?: PermissionMode): boolean {
   return process.env.PORTA_AUTO_APPROVE_COMMANDS === "1";
 }
 
+export function permissionModeFromQuery(
+  value: string | null | undefined,
+): PermissionMode | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (value === "full") return "full";
+  return "default";
+}
+
 export function isAutoApproveCommandsEnabled(): boolean {
   return shouldAutoApproveCommands();
 }

@@ -33,6 +33,7 @@ import {
 import { conversationSignals } from "./signals.js";
 import {
   maybeAutoApproveCommands,
+  permissionModeFromQuery,
   type PermissionMode,
 } from "./auto-approve.js";
 
@@ -177,8 +178,9 @@ export function validateWebSocketUpgrade(
   if (!isWebSocketOriginAllowed(origin, allowedOrigins)) {
     return { ok: false, code: "forbidden_origin" };
   }
-  const permissionMode =
-    url.searchParams.get("permissionMode") === "full" ? "full" : "default";
+  const permissionMode = permissionModeFromQuery(
+    url.searchParams.get("permissionMode"),
+  );
   return { ok: true, cascadeId: match[1], permissionMode };
 }
 

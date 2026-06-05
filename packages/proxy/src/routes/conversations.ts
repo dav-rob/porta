@@ -32,7 +32,10 @@ import {
 } from "../step-recovery.js";
 import { messageTracker } from "../message-tracker.js";
 import { conversationSignals } from "../signals.js";
-import { maybeAutoApproveCommands } from "../auto-approve.js";
+import {
+  maybeAutoApproveCommands,
+  permissionModeFromQuery,
+} from "../auto-approve.js";
 
 // ── Background warm-up for disk-only conversations ──
 
@@ -304,8 +307,9 @@ export function registerConversationRoutes(app: Hono): void {
     const limit = c.req.query("limit")
       ? parseInt(c.req.query("limit")!, 10)
       : undefined;
-    const permissionMode =
-      c.req.query("permissionMode") === "full" ? "full" : "default";
+    const permissionMode = permissionModeFromQuery(
+      c.req.query("permissionMode"),
+    );
 
     try {
       let resolvedOffset = offset;
