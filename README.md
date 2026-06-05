@@ -50,7 +50,7 @@ cp .env.example .env
 Copy the personal launcher:
 
 ```bash
-cp scripts_davidroberts/runporta.sh ~/runporta.sh
+cp scripts/util/runporta.sh ~/runporta.sh
 chmod +x ~/runporta.sh
 ```
 
@@ -91,7 +91,7 @@ The intended flow for this fork is:
 Add this helper to `~/.zshrc`, or source the repo copy from there:
 
 ```bash
-source ~/projects/quick-scripts/porta/scripts_davidroberts/launch_bg_app.zsh
+source ~/projects/quick-scripts/porta/scripts/util/launch_bg_app.zsh
 ```
 
 The helper defines:

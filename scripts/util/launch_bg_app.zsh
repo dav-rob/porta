@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 #
 # Copy this into ~/.zshrc, or source it from ~/.zshrc:
-#   source ~/projects/quick-scripts/porta/scripts_davidroberts/launch_bg_app.zsh
+#   source ~/projects/quick-scripts/porta/scripts/util/launch_bg_app.zsh
 
 launch_bg_app() {
     local app_name="$1"

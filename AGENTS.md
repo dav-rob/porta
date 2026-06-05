@@ -47,7 +47,7 @@ Brief notes for future agents working on Porta.
   leaves command prompts manual; `Full access` auto-approves terminal command
   prompts only. File permission prompts must stay manual.
 - Run `pnpm -r test` and `pnpm -r build` before claiming completion.
-- `scripts_davidroberts/runporta.sh` is the repo copy of the personal
+- `scripts/util/runporta.sh` is the repo copy of the personal
   `$HOME/runporta.sh` launcher.
-- `scripts_davidroberts/launch_bg_app.zsh` is the `.zshrc` helper for
+- `scripts/util/launch_bg_app.zsh` is the `.zshrc` helper for
   `runantigravity`, `runcodex`, and `runporta` aliases.
