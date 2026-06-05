@@ -8,6 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { Sidebar } from "./components/Sidebar";
+import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ChatHeader } from "./components/ChatHeader";
 import { ChatPanel } from "./components/ChatPanel";
 import { ChatInput } from "./components/ChatInput";
@@ -314,6 +315,7 @@ function ChatView() {
           projectName={projectSlug ?? undefined}
           onMenuToggle={() => setSidebarOpen(true)}
         />
+        <ConnectionBanner connected={connected} />
         {isSettingsPage ? (
           <SettingsPanel
             settings={settings}
